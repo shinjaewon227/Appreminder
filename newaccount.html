@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>회원가입</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", Roboto, "Noto Sans KR", sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #ffffff;
+        }
+
+        body {
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 1 / 1;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            display: none;
+        }
+        
+        #step1-screen { display: flex; }
+
+        .content-area {
+            padding: 40px 24px 0 24px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #191f28;
+            margin-bottom: 30px;
+            line-height: 1.4;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .input-label {
+            font-size: 13px;
+            color: #8b95a1;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .toss-input {
+            width: 100%;
+            padding: 10px 0;
+            font-size: 20px;
+            color: #333d4b;
+            border: none;
+            border-bottom: 2px solid #e5e8eb;
+            outline: none;
+            transition: border-color 0.3s;
+            background: transparent;
+        }
+
+        .toss-input:focus {
+            border-bottom: 2px solid #0064FF;
+        }
+        
+        .toss-input.success {
+            border-bottom: 2px solid #2ecc71 !important;
+        }
+        
+        .toss-input.error {
+            border-bottom: 2px solid #ff3b30 !important;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        /* 버튼 스타일 */
+        .check-btn, .send-code-btn {
+            padding: 0 14px;
+            background-color: #f2f4f6;
+            color: #4e5968;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+            height: 45px;
+            margin-bottom: 2px;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 80px;
+        }
+        
+        .check-btn:active, .send-code-btn:active {
+            background-color: #e5e8eb;
+        }
+        
+        .send-code-btn:disabled, .check-btn:disabled {
+            background-color: #e5e8eb;
+            color: #b0b8c1;
+            cursor: not-allowed;
+        }
+
+        .bottom-area {
+            width: 100%;
+            padding-bottom: 20px;
+            background-color: #ffffff;
+            padding-left: 24px;
+            padding-right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .next-btn {
+            width: 100%;
+            padding: 18px 0;
+            background-color: #0064FF;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .next-btn:active {
+            background-color: #0050cc;
+        }
+        
+        .back-btn {
+            width: 100%;
+            padding: 12px 0;
+            background-color: transparent;
+            color: #8b95a1;
+            font-size: 15px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* 구글 스타일 로딩 스피너 (SVG) */
+        .spinner-svg {
+            animation: rotate 2s linear infinite;
+        }
+
+        .spinner-circle {
+            stroke-width: 4;
+            stroke-dasharray: 1, 200;
+            stroke-dashoffset: 0;
+            stroke-linecap: round;
+            fill: none;
+            animation: dash 1.5s ease-in-out infinite;
+        }
+
+        .stroke-blue { stroke: #0064FF; } /* 파란색 */
+        .stroke-white { stroke: #ffffff; } /* 흰색 */
+
+        /* 작은 버튼용 */
+        .spinner-btn-small {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* 오버레이용 큰 사이즈 */
+        .spinner-large {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 20px;
+        }
+
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes dash {
+            0% { stroke-dasharray: 1, 200; stroke-dashoffset: 0; }
+            50% { stroke-dasharray: 89, 200; stroke-dashoffset: -35px; }
+            100% { stroke-dasharray: 89, 200; stroke-dashoffset: -124px; }
+        }
+
+        /* 모달 스타일 */
+        #custom-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background-color: rgba(51, 61, 75, 0.95);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            z-index: 3000;
+            width: 80%;
+            text-align: center;
+        }
+
+        #custom-modal.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* 계정 생성 중 오버레이 */
+        #creating-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 4000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(3px);
+            color: white;
+        }
+        
+        .overlay-text {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="creating-overlay">
+        <svg class="spinner-svg spinner-large" viewBox="25 25 50 50">
+            <circle class="spinner-circle stroke-white" cx="50" cy="50" r="20"></circle>
+        </svg>
+        <div class="overlay-text">계정을 생성하고 있어요</div>
+    </div>
+
+    <div id="step1-screen" class="screen">
+        <div class="content-area">
+            <div class="title">반가워요!<br>이름을 알려주세요</div>
+            <div class="form-group">
+                <input type="text" id="reg-name" class="toss-input" placeholder="이름 입력" autocomplete="off">
+            </div>
+        </div>
+        <div class="bottom-area">
+            <button class="next-btn" onclick="goStep2()">다음</button>
+            <button class="back-btn" onclick="location.href='index.html'">로그인으로 돌아가기</button>
+        </div>
+    </div>
+
+    <div id="step2-screen" class="screen">
+        <div class="content-area">
+            <div class="title">사용할 아이디와<br>비밀번호를 입력해주세요</div>
+            <div class="form-group">
+                <span class="input-label">아이디</span>
+                <div class="input-row">
+                    <input type="text" id="reg-id" class="toss-input" placeholder="영문, 숫자 포함" autocomplete="off" oninput="resetIdCheck()">
+                    <button id="check-id-btn" class="check-btn" onclick="checkId()">중복확인</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <span class="input-label">비밀번호</span>
+                <input type="password" id="reg-pw" class="toss-input" placeholder="비밀번호" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <span class="input-label">비밀번호 확인</span>
+                <input type="password" id="reg-pw-check" class="toss-input" placeholder="비밀번호 재입력" autocomplete="off">
+            </div>
+        </div>
+        <div class="bottom-area">
+            <button class="next-btn" onclick="goStep3()">다음</button>
+            <button class="back-btn" onclick="goBackStep1()">이전 단계</button>
+        </div>
+    </div>
+
+    <div id="step3-screen" class="screen">
+        <div class="content-area">
+            <div class="title">마지막으로<br>이메일 인증이 필요해요</div>
+            
+            <div class="form-group">
+                <span class="input-label">이메일</span>
+                <div class="input-row">
+                    <input type="email" id="reg-email" class="toss-input" placeholder="example@gmail.com" autocomplete="off" oninput="resetEmailStyle()">
+                    <button id="send-btn" class="send-code-btn" onclick="sendCode()">인증번호 보내기</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <span class="input-label">인증번호</span>
+                <input type="number" id="reg-code" class="toss-input" placeholder="6자리 숫자" autocomplete="off" oninput="checkVerifyCode()">
+            </div>
+        </div>
+        <div class="bottom-area">
+            <button class="next-btn" id="final-btn" onclick="finalRegister()">회원가입 완료</button>
+            <button class="back-btn" onclick="goBackStep2()">이전 단계</button>
+        </div>
+    </div>
+
+    <div id="custom-modal">메시지</div>
+
+    <script>
+        let isVerified = false;
+        let isIdChecked = false;
+        let timerInterval = null;
+
+        function showModal(message) {
+            const modal = document.getElementById('custom-modal');
+            modal.innerText = message;
+            modal.classList.add('show');
+            setTimeout(() => { modal.classList.remove('show'); }, 2000);
+        }
+
+        // 작은 버튼 구글 스피너 (파란색)
+        function setSmallBtnLoading(btnId, isLoading, originalText) {
+            const btn = document.getElementById(btnId);
+            if (isLoading) {
+                btn.disabled = true;
+                btn.innerHTML = `
+                    <svg class="spinner-svg spinner-btn-small" viewBox="25 25 50 50">
+                        <circle class="spinner-circle stroke-blue" cx="50" cy="50" r="20"></circle>
+                    </svg>
+                `;
+            } else {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        }
+
+        function goStep2() {
+            const name = document.getElementById('reg-name').value;
+            if(!name) { showModal("이름을 입력해주세요."); return; }
+            document.getElementById('step1-screen').style.display = 'none';
+            document.getElementById('step2-screen').style.display = 'flex';
+        }
+
+        function goBackStep1() {
+            document.getElementById('step2-screen').style.display = 'none';
+            document.getElementById('step1-screen').style.display = 'flex';
+        }
+
+        function goStep3() {
+            const id = document.getElementById('reg-id').value;
+            const pw = document.getElementById('reg-pw').value;
+            const pwCheck = document.getElementById('reg-pw-check').value;
+
+            if(!id) { showModal("아이디를 입력해주세요."); return; }
+            if(!isIdChecked) { showModal("아이디 중복확인을 해주세요."); return; }
+            if(!pw) { showModal("비밀번호를 입력해주세요."); return; }
+            if(pw !== pwCheck) { 
+                showModal("비밀번호가 일치하지 않습니다."); 
+                document.getElementById('reg-pw-check').classList.add('error');
+                return; 
+            } else {
+                document.getElementById('reg-pw-check').classList.remove('error');
+            }
+            document.getElementById('step2-screen').style.display = 'none';
+            document.getElementById('step3-screen').style.display = 'flex';
+        }
+
+        function goBackStep2() {
+            document.getElementById('step3-screen').style.display = 'none';
+            document.getElementById('step2-screen').style.display = 'flex';
+        }
+
+        function resetIdCheck() {
+            isIdChecked = false;
+            document.getElementById('reg-id').classList.remove('success', 'error');
+            const btn = document.getElementById('check-id-btn');
+            btn.disabled = false;
+            btn.innerText = "중복확인";
+        }
+
+        function checkId() {
+            const id = document.getElementById('reg-id').value;
+            const btnId = 'check-id-btn';
+            
+            if(!id) { showModal("아이디를 입력하세요."); return; }
+
+            setSmallBtnLoading(btnId, true);
+
+            fetch('https://jaewondev.pythonanywhere.com/check-id', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.available) {
+                    isIdChecked = true;
+                    document.getElementById('reg-id').classList.add('success');
+                    document.getElementById('reg-id').classList.remove('error');
+                    
+                    const btn = document.getElementById(btnId);
+                    btn.innerHTML = "";
+                    btn.innerText = "확인완료";
+                    btn.disabled = true;
+                    showModal(data.message);
+                } else {
+                    isIdChecked = false;
+                    document.getElementById('reg-id').classList.add('error');
+                    document.getElementById('reg-id').classList.remove('success');
+                    setSmallBtnLoading(btnId, false, "중복확인");
+                    showModal(data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                setSmallBtnLoading(btnId, false, "중복확인");
+                showModal("서버 오류");
+            });
+        }
+
+        function resetEmailStyle() {
+            document.getElementById('reg-email').classList.remove('error');
+        }
+
+        function sendCode() {
+            const email = document.getElementById('reg-email').value;
+            const sendBtn = document.getElementById('send-btn');
+            const emailInput = document.getElementById('reg-email');
+            
+            if(!email) { showModal("이메일을 입력해주세요."); return; }
+            if(sendBtn.disabled) return;
+
+            sendBtn.disabled = true;
+            // 회색 버튼용 파란 스피너
+            sendBtn.innerHTML = `
+                <svg class="spinner-svg spinner-btn-small" viewBox="25 25 50 50">
+                    <circle class="spinner-circle stroke-blue" cx="50" cy="50" r="20"></circle>
+                </svg>
+            `;
+
+            fetch('https://jaewondev.pythonanywhere.com/send-verification-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    showModal(data.message);
+                    emailInput.classList.remove('error');
+                    startTimer();
+                } else {
+                    showModal(data.message);
+                    emailInput.classList.add('error');
+                    sendBtn.disabled = false; 
+                    sendBtn.innerHTML = "인증번호 보내기";
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showModal("서버 오류 발생");
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = "인증번호 보내기";
+            });
+        }
+
+        function startTimer() {
+            const sendBtn = document.getElementById('send-btn');
+            let count = 30;
+            sendBtn.innerText = `${count}초`;
+            sendBtn.disabled = true;
+            
+            if(timerInterval) clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                count--;
+                if(count <= 0) {
+                    clearInterval(timerInterval);
+                    sendBtn.disabled = false;
+                    sendBtn.innerText = "인증번호 보내기";
+                } else {
+                    sendBtn.innerText = `${count}초`;
+                }
+            }, 1000);
+        }
+
+        function checkVerifyCode() {
+            const code = document.getElementById('reg-code').value;
+            const email = document.getElementById('reg-email').value;
+            const codeInput = document.getElementById('reg-code');
+
+            if(code.length === 6) {
+                fetch('https://jaewondev.pythonanywhere.com/verify-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, code: code })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) {
+                        isVerified = true;
+                        codeInput.classList.remove('error');
+                        codeInput.classList.add('success');
+                        showModal("인증되었습니다.");
+                        codeInput.blur();
+                        if(timerInterval) clearInterval(timerInterval);
+                        document.getElementById('send-btn').innerText = "인증완료";
+                        document.getElementById('send-btn').disabled = true;
+                    } else {
+                        isVerified = false;
+                        codeInput.classList.remove('success');
+                        codeInput.classList.add('error');
+                        showModal(data.message);
+                    }
+                })
+                .catch(err => console.error(err));
+            } else {
+                codeInput.classList.remove('success', 'error');
+                isVerified = false;
+            }
+        }
+
+        function finalRegister() {
+            if(!isVerified) { showModal("이메일 인증을 완료해주세요."); return; }
+
+            const name = document.getElementById('reg-name').value;
+            const id = document.getElementById('reg-id').value;
+            const pw = document.getElementById('reg-pw').value;
+            const email = document.getElementById('reg-email').value;
+
+            // 모달 띄우기
+            const overlay = document.getElementById('creating-overlay');
+            overlay.style.display = 'flex';
+
+            fetch('https://jaewondev.pythonanywhere.com/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    id: id,
+                    password: pw,
+                    email: email
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    // 스피너 숨기고 완료 메시지
+                    document.querySelector('.spinner-svg.spinner-large').style.display = 'none';
+                    document.querySelector('.overlay-text').innerText = "가입 완료! 로그인 화면으로 이동합니다.";
+                    
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1500);
+                } else {
+                    overlay.style.display = 'none';
+                    showModal(data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                overlay.style.display = 'none';
+                showModal("서버 오류");
+            });
+        }
+    </script>
+</body>
+</html>

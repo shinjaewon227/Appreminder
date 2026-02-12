@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Home</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+    
+    <style>
+        /* 기본 리셋 및 폰트 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", Roboto, "Noto Sans KR", sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #f2f4f6;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 헤더 영역 */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-top: 20px;
+        }
+
+        .welcome-text {
+            font-size: 24px;
+            font-weight: 700;
+            color: #191f28;
+            animation: fadeIn 0.6s ease-out;
+            line-height: 1.4;
+        }
+
+        /* 날짜 및 시간 스타일 */
+        .today-info {
+            font-size: 15px;
+            color: #8b95a1;
+            font-weight: 500;
+            margin-left: 8px;
+            vertical-align: middle;
+            display: inline-block;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .logout-btn {
+            font-size: 14px;
+            font-weight: 500;
+            color: #8b95a1;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 8px 16px;
+            border-radius: 16px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none; /* 텍스트 선택 방지 (롱프레스 시) */
+        }
+
+        .logout-btn:active {
+            background: rgba(0, 0, 0, 0.05);
+            transform: scale(0.95);
+        }
+
+        /* 미리듣기 버튼 스타일 */
+        .preview-btn {
+            font-size: 14px;
+            font-weight: 600;
+            color: #3182f6;
+            background: rgba(49, 130, 246, 0.1);
+            padding: 8px 16px;
+            border-radius: 16px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: none; /* 기본 숨김 */
+            animation: popIn 0.3s ease;
+        }
+
+        /* 메인 컨텐츠 (그리드 레이아웃) */
+        .dashboard-grid {
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: repeat(4, 1fr);
+            gap: 16px;
+            padding-bottom: 20px;
+        }
+
+        /* 공통 카드 스타일 */
+        .card {
+            background-color: #ffffff;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+            overflow: hidden;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0;
+        }
+
+        .card:active {
+            transform: scale(0.98);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333d4b;
+            z-index: 1;
+        }
+
+        .card-icon {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+
+        /* 날씨 카드 스타일 */
+        .card.weather {
+            grid-column: 1;
+            grid-row: 1 / 2;
+            transition: background 1.5s ease-in-out; 
+            animation-delay: 0.05s;
+            padding: 20px;
+            justify-content: flex-start;
+            color: white;
+            background: linear-gradient(135deg, #6dd5fa 0%, #001f5b 100%);
+            position: relative;
+        }
+
+        /* 시간대별 배경 */
+        .card.weather.morning {
+            background: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%);
+        }
+        
+        .card.weather.afternoon {
+            background: linear-gradient(135deg, #6dd5fa 0%, #001f5b 100%);
+        }
+
+        .card.weather.evening {
+            background: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
+        }
+
+        /* 아침용 텍스트 색상 조정 */
+        .card.weather.morning .weather-temp,
+        .card.weather.morning .weather-header,
+        .card.weather.morning .weather-desc,
+        .card.weather.morning .weather-message {
+            text-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            color: #4a4a4a;
+        }
+        
+        .card.weather.morning .material-symbols-rounded {
+             color: #4a4a4a;
+        }
+
+        .weather-header {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 4px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.95);
+            font-weight: 600;
+            transition: color 1.5s;
+        }
+
+        .material-symbols-rounded {
+            font-size: 18px;
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            color: white;
+            transition: color 1.5s;
+        }
+
+        .weather-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .weather-temp {
+            font-size: 32px;
+            font-weight: 800;
+            color: #ffffff;
+            transition: color 1.5s;
+        }
+        
+        .weather-status-icon {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+        }
+
+        .weather-message {
+            font-size: 13px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            transition: opacity 0.5s ease-in-out, color 1.5s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            opacity: 1;
+        }
+
+        .fade-out {
+            opacity: 0;
+        }
+
+        /* 계획표 */
+        .card.plan {
+            grid-column: 1;      
+            grid-row: 2 / 5;
+            background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+            animation-delay: 0.1s;
+        }
+
+        .card.plan .card-icon {
+            width: 100px;
+            height: 100px;
+            opacity: 0.9;
+        }
+
+        /* 리마인더 */
+        .card.reminder {
+            grid-column: 2;
+            grid-row: 1 / 3;
+            animation-delay: 0.2s;
+        }
+
+        /* 기타기능 */
+        .card.etc {
+            grid-column: 2;
+            grid-row: 3 / 5;
+            animation-delay: 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* 알람 오버레이 스타일 (블러 효과 적용) */
+        #alarmOverlay {
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 10000; 
+            display: none; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            text-align: center; 
+            padding: 40px;
+            animation: fadeInAlarm 0.5s ease;
+        }
+        
+        .alarm-content-box {
+            background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%, #a18cd1 100%);
+            background-size: 200% 200%;
+            animation: gradientBG 5s ease infinite;
+            padding: 40px 30px;
+            border-radius: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        @keyframes fadeInAlarm {
+            from { opacity: 0; } to { opacity: 1; }
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+        .alarm-title { font-size: 28px; font-weight: 800; color: white; margin-bottom: 10px; }
+        .alarm-msg { font-size: 16px; color: rgba(255,255,255,0.9); margin-bottom: 30px; }
+        .alarm-btn { width: 100%; padding: 16px; border-radius: 20px; border: none; font-size: 16px; font-weight: 700; margin-bottom: 12px; cursor: pointer; transition: transform 0.1s; }
+        .alarm-btn:active { transform: scale(0.95); }
+        .stop-btn { background: white; color: #f04452; }
+        .snooze-btn { background: rgba(255,255,255,0.3); color: white; backdrop-filter: blur(5px); }
+    </style>
+</head>
+<body>
+    
+    <div id="alarmOverlay">
+        <div class="alarm-content-box">
+            <div class="alarm-title" id="alarmTitleText">리마인더</div>
+            <div class="alarm-msg" id="alarmSubText">을/를 할 시간입니다.</div>
+            <button class="alarm-btn stop-btn" onclick="stopAlarm()">종료</button>
+            <button class="alarm-btn snooze-btn" onclick="snoozeAlarm()">연기 (재알림)</button>
+        </div>
+    </div>
+
+    <header>
+        <div class="welcome-text" id="welcome-message">
+            OOO님<br>환영합니다 <span class="today-info" id="clock-display"></span>
+        </div>
+        <div class="btn-container">
+            <button class="preview-btn" id="previewSoundBtn" onclick="playPreviewSound()">알림재생</button>
+            <button class="logout-btn" id="logoutBtn" onclick="logout()">로그아웃</button>
+        </div>
+    </header>
+
+    <div class="dashboard-grid">
+        <div class="card weather" id="weather-card">
+            <div class="weather-header">
+                <span class="material-symbols-rounded">location_on</span>
+                <span id="location-text">위치 확인 중...</span>
+            </div>
+            <div class="weather-content">
+                <span class="weather-temp" id="current-temp">--°</span>
+                <img id="weather-icon" src="" alt="" class="weather-status-icon" style="display:none;">
+            </div>
+            <div class="weather-message" id="weather-msg">날씨 정보를 불러오는 중...</div>
+        </div>
+
+        <div class="card plan" onclick="location.href='today.html'">
+            <div class="card-title">계획표</div>
+            <img src="icon/calendar.png" alt="Calendar" class="card-icon">
+        </div>
+
+        <div class="card reminder" onclick="location.href='reminder.html'">
+            <div class="card-title">리마인더</div>
+            <img src="icon/reminder.png" alt="Reminder" class="card-icon">
+        </div>
+
+        <div class="card etc" onclick="location.href='setting.html'">
+            <div class="card-title">기타기능</div>
+            <img src="icon/setting.webp" alt="Setting" class="card-icon">
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let lastAutoPhase = null;
+        let pressTimer;
+        const LONG_PRESS_DURATION = 6000; // 6초
+        let isLongPress = false; 
+
+        // 멘트 관련 변수
+        let currentTempVal = 0;
+        let currentWeatherCode = 0; 
+        let messageInterval = null;
+        let msgIndex = 0; 
+
+        // 리마인더 및 알람 관련 변수
+        const API_URL = 'https://jaewondev.pythonanywhere.com';
+        let reminders = [];
+        let activeAlarm = null;
+        let snoozedAlarms = [];
+        
+        // sound1: 인트로 (먼저 재생), sound2: 반복음 (인트로 후 재생)
+        const sound1 = new Audio('https://appreminder.corerepublix.kro.kr/other/sound2.mp3');
+        const sound2 = new Audio('https://appreminder.corerepublix.kro.kr/other/sound1.mp3');
+        sound2.loop = true;
+
+        window.onload = function() {
+            const storedUser = localStorage.getItem('loginUser');
+            
+            if (!storedUser) {
+                alert("로그인이 필요합니다.");
+                window.location.href = 'index.html';
+            } else {
+                document.getElementById('welcome-message').innerHTML = `${storedUser}님<span class="today-info" id="clock-display"></span><br>환영합니다`;
+            }
+
+            updateTime();
+            setInterval(updateTime, 1000);
+
+            getWeatherData();
+            setInterval(getWeatherData, 600000);
+
+            checkTimeAndSetTheme();
+            setInterval(checkTimeAndSetTheme, 1000);
+
+            setupCardEvents();
+            setupLogoutLongPress(); // 로그아웃 롱프레스 이벤트 연결
+            
+            startMessageRotation();
+
+            loadReminders();
+            setInterval(checkAlarm, 1000);
+
+            document.body.addEventListener('touchstart', unlockAudio, { once: true });
+            document.body.addEventListener('click', unlockAudio, { once: true });
+        }
+
+        function logout() {
+            // 롱프레스가 아닐 때만 로그아웃 실행
+            if(!isLogoutLongPress) {
+                localStorage.removeItem('loginUser');
+                window.location.href = 'index.html';
+            }
+        }
+
+        // [추가] 로그아웃 버튼 롱프레스 로직
+        let logoutTimer;
+        let isLogoutLongPress = false;
+        
+        function setupLogoutLongPress() {
+            const btn = document.getElementById('logoutBtn');
+            if(!btn) return;
+
+            const startPress = (e) => {
+                isLogoutLongPress = false;
+                logoutTimer = setTimeout(() => {
+                    isLogoutLongPress = true;
+                    // 5초 후 알림재생 버튼 표시
+                    document.getElementById('previewSoundBtn').style.display = 'block';
+                    if (navigator.vibrate) navigator.vibrate(100);
+                }, 5000);
+            };
+
+            const endPress = (e) => {
+                clearTimeout(logoutTimer);
+            };
+
+            btn.addEventListener('mousedown', startPress);
+            btn.addEventListener('touchstart', startPress);
+            btn.addEventListener('mouseup', endPress);
+            btn.addEventListener('mouseleave', endPress);
+            btn.addEventListener('touchend', endPress);
+        }
+
+        // [추가] 알림 미리듣기 실행
+        function playPreviewSound() {
+            document.getElementById('alarmTitleText').innerText = "알림 미리듣기";
+            document.getElementById('alarmSubText').innerText = "알림음 테스트 중입니다.";
+            document.getElementById('alarmOverlay').style.display = 'flex';
+            
+            sound1.currentTime = 0;
+            sound2.currentTime = 0;
+            sound1.play().then(() => {
+                sound1.onended = () => {
+                    sound2.play();
+                };
+            }).catch(e => console.log("Audio Preview Error:", e));
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const month = now.getMonth() + 1;
+            const date = now.getDate();
+            
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? '오후' : '오전';
+            
+            hours = hours % 12;
+            hours = hours ? hours : 12; 
+
+            const timeString = `${month}월 ${date}일 ${ampm} ${hours}:${minutes}`;
+            
+            const clockEl = document.getElementById('clock-display');
+            if(clockEl) clockEl.innerText = timeString;
+        }
+
+        function checkTimeAndSetTheme() {
+            const now = new Date();
+            const hour = now.getHours();
+            let currentPhase = '';
+
+            if (hour >= 6 && hour < 12) {
+                currentPhase = 'morning';
+            } else if (hour >= 12 && hour < 17) {
+                currentPhase = 'afternoon';
+            } else {
+                currentPhase = 'evening';
+            }
+
+            if (currentPhase !== lastAutoPhase) {
+                setTheme(currentPhase);
+                lastAutoPhase = currentPhase;
+            }
+        }
+
+        function setTheme(phase) {
+            const card = document.getElementById('weather-card');
+            card.classList.remove('morning', 'afternoon', 'evening');
+            card.classList.add(phase);
+        }
+
+        function setupCardEvents() {
+            const card = document.getElementById('weather-card');
+            
+            const startPress = () => {
+                isLongPress = false;
+                pressTimer = setTimeout(() => {
+                    isLongPress = true; 
+                    cycleThemeManual();
+                }, LONG_PRESS_DURATION);
+            };
+
+            const cancelPress = () => {
+                clearTimeout(pressTimer);
+            };
+
+            card.addEventListener('mousedown', startPress);
+            card.addEventListener('touchstart', startPress);
+
+            card.addEventListener('mouseup', (e) => {
+                cancelPress();
+                if (!isLongPress) {
+                    location.href = 'weather.html';
+                }
+            });
+            card.addEventListener('touchend', (e) => {
+                cancelPress();
+                if (!isLongPress) {
+                    location.href = 'weather.html'; 
+                }
+            });
+
+            card.addEventListener('mouseleave', cancelPress);
+            card.addEventListener('touchcancel', cancelPress);
+        }
+
+        function cycleThemeManual() {
+            const card = document.getElementById('weather-card');
+            let nextPhase = '';
+            if (card.classList.contains('morning')) nextPhase = 'afternoon';
+            else if (card.classList.contains('afternoon')) nextPhase = 'evening';
+            else nextPhase = 'morning';
+
+            setTheme(nextPhase);
+            if (navigator.vibrate) navigator.vibrate(100);
+        }
+
+        function getWeatherData() {
+            if (!navigator.geolocation) {
+                setWeatherDefault();
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(success, error);
+
+            function success(position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                
+                const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`;
+
+                fetch(weatherUrl)
+                    .then(res => res.json())
+                    .then(data => {
+                        currentTempVal = Math.round(data.current_weather.temperature);
+                        currentWeatherCode = data.current_weather.weathercode;
+                        
+                        document.getElementById('current-temp').textContent = `${currentTempVal}°`;
+                        updateWeatherIcon(currentWeatherCode);
+                        
+                        updateMessageText(); 
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        document.getElementById('current-temp').textContent = "--°";
+                    });
+
+                const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&accept-language=ko`;
+                
+                fetch(geoUrl)
+                    .then(res => res.json())
+                    .then(data => {
+                        let locationName = "현위치";
+                        if (data.address) {
+                            locationName = data.address.borough || data.address.city || data.address.town || data.address.village || "알 수 없음";
+                            if(locationName === "서울특별시") locationName = "서울";
+                        }
+                        document.getElementById('location-text').textContent = locationName;
+                    })
+                    .catch(err => {
+                        console.error("주소 변환 실패", err);
+                        document.getElementById('location-text').textContent = "위치 확인 불가";
+                    });
+            }
+
+            function error() {
+                setWeatherDefault();
+            }
+        }
+
+        function setWeatherDefault() {
+            document.getElementById('location-text').textContent = "서울";
+            const lat = 37.5665;
+            const lon = 126.9780;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`;
+            
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    currentTempVal = Math.round(data.current_weather.temperature);
+                    currentWeatherCode = data.current_weather.weathercode;
+                    document.getElementById('current-temp').textContent = `${currentTempVal}°`;
+                    updateWeatherIcon(currentWeatherCode);
+                    updateMessageText();
+                })
+                .catch(() => {
+                    document.getElementById('current-temp').textContent = "--°";
+                });
+        }
+
+        function updateWeatherIcon(code) {
+            let iconCode = "01d";
+            if (code === 0) iconCode = "01d"; 
+            else if (code <= 3) iconCode = "03d"; 
+            else if (code <= 48) iconCode = "50d"; 
+            else if (code <= 67) iconCode = "09d"; 
+            else if (code <= 77) iconCode = "13d"; 
+            else if (code <= 82) iconCode = "09d"; 
+            else if (code >= 95) iconCode = "11d"; 
+
+            const iconImg = document.getElementById('weather-icon');
+            iconImg.src = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+            iconImg.style.display = 'block';
+        }
+
+        function getDynamicMessages() {
+            const now = new Date();
+            const hour = now.getHours();
+            
+            let timeState = ""; 
+            let timeMent = ""; 
+            
+            if (hour >= 6 && hour < 12) {
+                timeState = "morning";
+                timeMent = "오늘도 활기찬 하루를 시작하세요";
+            } else if (hour >= 12 && hour < 17) {
+                timeState = "afternoon";
+                timeMent = "기분 좋은 오후 보내세요";
+            } else if (hour >= 17 && hour < 22) {
+                timeState = "evening";
+                timeMent = "오늘 하루도 수고하셨어요";
+            } else {
+                timeState = "night";
+                timeMent = "편안한 밤 되세요";
+            }
+
+            let weatherDesc = "맑은";
+            const c = currentWeatherCode;
+            if (c === 0) weatherDesc = "화창한";
+            else if (c <= 3) weatherDesc = "구름 낀";
+            else if (c <= 48) weatherDesc = "안개 낀";
+            else if (c <= 67 || (c >= 80 && c <= 82)) weatherDesc = "비 오는";
+            else if (c >= 71 && c <= 77) weatherDesc = "눈 내리는";
+            else if (c >= 95) weatherDesc = "천둥번개가 치는";
+
+            let timeWord = "시간";
+            if (timeState === "morning") timeWord = "아침";
+            else if (timeState === "afternoon") timeWord = "오후";
+            else if (timeState === "evening") timeWord = "저녁";
+            else timeWord = "밤";
+
+            const msg1 = `${weatherDesc} ${timeWord}이네요`; 
+            const msg2 = timeMent; 
+
+            return [msg1, msg2];
+        }
+
+        function startMessageRotation() {
+            updateMessageText();
+
+            messageInterval = setInterval(() => {
+                const msgEl = document.getElementById('weather-msg');
+                msgEl.classList.add('fade-out');
+
+                setTimeout(() => {
+                    msgIndex = (msgIndex + 1) % 2; 
+                    updateMessageText(); 
+                    msgEl.classList.remove('fade-out'); 
+                }, 500);
+
+            }, 5000); 
+        }
+
+        function updateMessageText() {
+            const msgs = getDynamicMessages();
+            const msgEl = document.getElementById('weather-msg');
+            if(msgEl) {
+                msgEl.innerText = msgs[msgIndex];
+            }
+        }
+
+        function unlockAudio() {
+            sound1.play().then(() => { sound1.pause(); sound1.currentTime = 0; }).catch(() => {});
+            sound2.play().then(() => { sound2.pause(); sound2.currentTime = 0; }).catch(() => {});
+        }
+
+        function loadReminders() {
+            const userName = localStorage.getItem('loginUser');
+            if(!userName) return;
+
+            fetch(`${API_URL}/get-reminders`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name: userName })
+            })
+            .then(res => res.json())
+            .then(data => {
+                reminders = data.reminders || [];
+            })
+            .catch(err => console.log('알람 데이터 로드 실패', err));
+        }
+
+        function checkAlarm() {
+            const now = new Date();
+            if(now.getSeconds() !== 0) return;
+            const timeStr = now.toTimeString().substring(0, 5);
+            const dateStr = now.toISOString().split('T')[0];
+            const day = now.getDay();
+
+            reminders.forEach(r => {
+                let trigger = false;
+                if(r.time === timeStr) {
+                    if(r.repeat_type === 'daily') trigger = true;
+                    if(r.repeat_type === 'none' && r.target_date === dateStr) trigger = true;
+                    if(r.repeat_type === 'weekly' && r.repeat_days.split(',').map(Number).includes(day)) trigger = true;
+                    if(r.repeat_type === 'weekly_once' && isSameWeek(dateStr, r.target_date)) {
+                        if(r.repeat_days.split(',').map(Number).includes(day)) trigger = true;
+                    }
+                }
+                if(trigger) triggerAlarm(r);
+            });
+
+            snoozedAlarms.forEach((item, idx) => {
+                if(item.triggerTime === timeStr) {
+                    triggerAlarm(item.original);
+                    snoozedAlarms.splice(idx, 1);
+                }
+            });
+        }
+
+        function isSameWeek(date1Str, date2Str) {
+            const d1 = new Date(date1Str);
+            const d2 = new Date(date2Str);
+            const d1Sun = new Date(d1); d1Sun.setDate(d1.getDate() - d1.getDay());
+            const d2Sun = new Date(d2); d2Sun.setDate(d2.getDate() - d2.getDay());
+            return d1Sun.toDateString() === d2Sun.toDateString();
+        }
+
+        function triggerAlarm(r) {
+            activeAlarm = r;
+            document.getElementById('alarmTitleText').innerText = r.title;
+            document.getElementById('alarmSubText').innerText = `${r.title}을/를 할 시간입니다.`;
+            document.getElementById('alarmOverlay').style.display = 'flex';
+            
+            sound1.currentTime = 0;
+            sound2.currentTime = 0;
+            sound1.play().then(() => {
+                sound1.onended = () => {
+                    sound2.play();
+                };
+            }).catch(e => console.log("Audio Error:", e));
+        }
+
+        function stopAlarm() { 
+            closeOverlay(); 
+        }
+        
+        function snoozeAlarm() {
+            closeOverlay();
+            if(activeAlarm && activeAlarm.snooze > 0) {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() + activeAlarm.snooze);
+                snoozedAlarms.push({ triggerTime: now.toTimeString().substring(0,5), original: activeAlarm });
+                alert(`${activeAlarm.snooze}분 뒤 다시 알립니다`);
+            }
+        }
+        
+        function closeOverlay() {
+            document.getElementById('alarmOverlay').style.display = 'none';
+            sound1.pause();
+            sound2.pause();
+            sound1.currentTime = 0;
+            sound2.currentTime = 0;
+            sound1.onended = null;
+        }
+    </script>
+</body>
+</html>

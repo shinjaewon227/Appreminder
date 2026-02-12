@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Daily Plan</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <style>
+        /* --- 1. 기본 설정 및 Toss 느낌의 폰트/컬러 --- */
+        :root {
+            --primary-color: #3182f6; /* 토스 블루 */
+            --bg-color: #f2f4f6;
+            --text-main: #191f28;
+            --text-sub: #8b95a1;
+            --line-color: #e5e8eb;
+            --danger-color: #f04452;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background-color: #ffffff; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            color: var(--text-main);
+            position: relative; 
+        }
+
+        /* 로딩 애니메이션 */
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255, 0.95); z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            transition: opacity 0.3s ease;
+        }
+        .spinner-svg { width: 50px; height: 50px; animation: rotate 2s linear infinite; }
+        .spinner-circle {
+            stroke: var(--primary-color); stroke-width: 4; stroke-dasharray: 1, 200; stroke-dashoffset: 0;
+            stroke-linecap: round; fill: none; animation: dash 1.5s ease-in-out infinite;
+        }
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+        @keyframes dash {
+            0% { stroke-dasharray: 1, 200; stroke-dashoffset: 0; }
+            50% { stroke-dasharray: 89, 200; stroke-dashoffset: -35px; }
+            100% { stroke-dasharray: 89, 200; stroke-dashoffset: -124px; }
+        }
+
+        /* --- 2. 상단 헤더 --- */
+        .top-bar {
+            padding: 12px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--line-color);
+            flex-shrink: 0;
+            background: white; z-index: 10;
+        }
+        .date-display { 
+            font-size: 17px; font-weight: 700; color: var(--text-main); 
+            border: none; outline: none; background: transparent; 
+        }
+        
+        .save-btn { 
+            background: var(--primary-color); color: white; border: none; padding: 8px 14px; 
+            border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; 
+            transition: transform 0.1s;
+        }
+        .save-btn:active { transform: scale(0.95); }
+        .back-btn { background: none; border: none; margin-right: 10px; cursor: pointer; color: #333; display: flex; align-items: center; }
+
+        /* --- 3. 메인 컨텐츠 --- */
+        .main-container {
+            flex-grow: 1; display: flex; height: 100%; overflow: hidden;
+        }
+
+        /* [좌측] 타임테이블 */
+        .left-panel {
+            width: 140px; border-right: 1px solid var(--line-color);
+            display: flex; flex-direction: column; overflow-y: auto; background: #fdfdfd; flex-shrink: 0;
+        }
+        .section-title {
+            padding: 12px; text-align: center; font-size: 12px; font-weight: 600; color: var(--text-sub); border-bottom: 1px solid var(--line-color);
+        }
+
+        /* 격자 영역 */
+        .timetable-grid { padding: 10px 0; display: flex; flex-direction: column; align-items: center; }
+        .grid-row { display: flex; align-items: center; height: 26px; width: 100%; padding-left: 5px; }
+        .time-label {
+            width: 35px; font-size: 12px; color: var(--text-sub); 
+            display: flex; justify-content: center; align-items: center; 
+            margin-right: 8px; font-variant-numeric: tabular-nums; 
+        }
+        .cell-container { display: flex; }
+        .cell {
+            width: 15px; height: 15px; border: 1px solid #d1d6db; margin-right: 2px; border-radius: 4px; 
+            cursor: pointer; transition: background-color 0.1s;
+        }
+        .cell.filled { background-color: var(--primary-color); border-color: var(--primary-color); }
+        .cell.range-start { border-color: #ff4d4d; border-width: 2px; }
+
+        .left-footer { padding: 15px; border-top: 1px solid var(--line-color); background: #f9fafb; }
+        .reset-btn {
+            width: 100%; padding: 8px; margin-bottom: 15px;
+            background: white; border: 1px solid #d1d6db; border-radius: 12px;
+            color: var(--text-sub); font-size: 12px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .reset-btn:active { transform: scale(0.95); background: #f2f4f6; }
+        .stat-item { margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 12px; color: var(--text-sub); }
+        .stat-val { font-weight: 700; color: var(--text-main); font-size: 14px; }
+
+
+        /* [우측] 리스트 & 성찰 (Flex Row로 변경) */
+        .right-panel { 
+            flex-grow: 1; display: flex; overflow: hidden; background: white; 
+        }
+
+        /* 3-1. 할일 목록 영역 */
+        .task-list-section {
+            flex: 1.2; /* 비율 조절 */
+            display: flex; flex-direction: column; 
+            border-right: 1px solid var(--line-color);
+            overflow: hidden;
+            min-width: 300px;
+        }
+
+        .plan-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .plan-table th {
+            background: #f9fafb; color: var(--text-sub); font-size: 11px; font-weight: 600;
+            padding: 10px 2px; border-bottom: 1px solid var(--line-color); text-align: center; white-space: nowrap;
+        }
+        .plan-table td { border-bottom: 1px solid #f2f4f6; padding: 6px 2px; vertical-align: middle; position: relative; }
+        
+        input.clean-input {
+            width: 100%; border: none; outline: none; font-size: 13px; color: var(--text-main);
+            background: transparent; text-align: center; padding: 4px 0; border-radius: 6px;
+        }
+        input.clean-input:focus { background: #e8f3ff; }
+        input.clean-input.text-left { text-align: left; padding-left: 6px; }
+
+        /* 드래그 앤 드롭 스타일 */
+        tr.draggable-row { cursor: grab; }
+        tr.draggable-row:active { cursor: grabbing; }
+        tr.dragging { opacity: 0.5; background: #e8f3ff; }
+        tr.drag-over { border-top: 2px solid var(--primary-color); }
+
+        /* 삭제 버튼 */
+        .delete-btn {
+            width: 16px; height: 16px; background: #ffebee; color: var(--danger-color);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 10px; cursor: pointer; border: none; margin-left: 2px;
+        }
+
+        /* 3-2. 성찰하기 영역 (수정됨: 한 화면에 맞게 압축) */
+        .reflection-section {
+            flex: 1; 
+            background: #ffffff;
+            display: flex; flex-direction: column;
+            overflow: hidden; /* 스크롤 제거 */
+        }
+        .reflection-header {
+            padding: 10px 15px; background: #f9fafb; border-bottom: 1px solid var(--line-color);
+            font-size: 13px; font-weight: 700; color: var(--text-main); text-align: center;
+            flex-shrink: 0;
+        }
+        .reflection-content { 
+            padding: 10px; 
+            display: flex; flex-direction: column; 
+            height: 100%; 
+            justify-content: space-evenly; /* 공간 배분 */
+        }
+        
+        .q-box { margin-bottom: 5px; flex-shrink: 0; }
+        .q-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-main); margin-bottom: 4px; }
+        
+        /* 5점 척도 버튼 스타일 변경 (파란색 둥근 사각형) */
+        .radio-group { display: flex; gap: 6px; background: transparent; padding: 0; }
+        .radio-option { flex: 1; position: relative; cursor: pointer; }
+        .radio-option input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .radio-display {
+            display: flex; align-items: center; justify-content: center;
+            width: 100%; padding: 8px 0; border-radius: 10px;
+            background: #f2f4f6; color: #8b95a1;
+            font-size: 11px; font-weight: 600; transition: all 0.2s;
+        }
+        .radio-option input:checked + .radio-display {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 2px 6px rgba(49, 130, 246, 0.3);
+        }
+        
+        /* 텍스트박스 높이 축소 */
+        textarea.box-input {
+            width: 100%; border: 1px solid var(--line-color); border-radius: 8px; padding: 6px;
+            font-size: 12px; resize: none; outline: none; height: 32px; /* 높이 고정 축소 */
+        }
+        textarea.box-input:focus { border-color: var(--primary-color); }
+
+        /* 하단 개념 정리 표 (Flex Grow로 남은 공간 차지) */
+        .concept-area {
+            flex-grow: 1; display: flex; flex-direction: column; 
+            border: 1px solid var(--line-color); border-radius: 8px; 
+            margin-top: 5px; overflow: hidden;
+        }
+        .concept-table { width: 100%; border-collapse: collapse; height: 100%; border: none; margin-top: 0; }
+        .concept-table td { padding: 4px 8px; border-bottom: 1px solid var(--line-color); vertical-align: middle; }
+        .concept-label { font-size: 11px; font-weight: 600; width: 60px; background: #f9fafb; color: #4e5968; }
+        .concept-input { width: 100%; border: none; outline: none; font-size: 12px; background: transparent; }
+        .concept-textarea {
+            width: 100%; border: none; outline: none; resize: none; font-size: 12px; 
+            height: 100%; background: transparent; padding: 4px 0;
+        }
+
+        /* --- 4. 애니메이션 체크박스 (SVG) --- */
+        .check-wrapper { 
+            display: flex; justify-content: center; align-items: center; 
+            width: 20px; height: 20px; margin: 0 auto; cursor: pointer;
+        }
+        .hidden-checkbox { display: none; }
+        .custom-box {
+            width: 16px; height: 16px; border: 2px solid #d1d6db; border-radius: 5px;
+            position: relative; transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+        }
+        .hidden-checkbox:checked + .custom-box {
+            background-color: var(--primary-color); border-color: var(--primary-color);
+        }
+        .check-svg { width: 10px; height: 10px; fill: none; stroke: white; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset 0.3s ease; }
+        .hidden-checkbox:checked + .custom-box .check-svg { stroke-dashoffset: 0; }
+
+        /* --- 5. 모달 (Toss Style) --- */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 100;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .modal-overlay.show { display: flex; opacity: 1; }
+        .modal-overlay.hide { opacity: 0; }
+
+        .modal-box {
+            background: white; padding: 24px; border-radius: 24px; text-align: center; width: 280px;
+            transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        .modal-overlay.show .modal-box { transform: scale(1); }
+        .modal-overlay.hide .modal-box { transform: scale(0.8); transition: transform 0.2s ease-in; }
+        
+        .modal-msg { font-size: 16px; font-weight: 700; color: #191f28; margin-bottom: 24px; line-height: 1.4; }
+        .modal-btn {
+            background: var(--primary-color); color: white; width: 100%; padding: 12px;
+            border: none; border-radius: 14px; font-size: 15px; font-weight: 600; cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .modal-btn.cancel { background: #f2f4f6; color: #4e5968; margin-right: 8px; }
+        .modal-btn.danger { background: var(--danger-color); color: white; }
+        .modal-row { display: flex; justify-content: space-between; gap: 10px; }
+
+        .circle-check {
+            width: 40px; height: 40px; border-radius: 50%; background: var(--primary-color);
+            position: relative; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 16px auto;
+            animation: popIcon 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .circle-check::after {
+            content: ''; width: 10px; height: 18px; border: solid white; border-width: 0 3px 3px 0;
+            transform: rotate(45deg); margin-top: -3px;
+        }
+        @keyframes popIcon { from { transform: scale(0); } to { transform: scale(1); } }
+
+        /* [추가] 알람 오버레이 스타일 */
+        #alarmOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            z-index: 10000; display: none; 
+            flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 40px;
+            animation: fadeInAlarm 0.5s ease;
+        }
+        .alarm-content-box {
+            background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%, #a18cd1 100%);
+            background-size: 200% 200%; animation: gradientBG 5s ease infinite;
+            padding: 40px 30px; border-radius: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%; max-width: 320px; display: flex; flex-direction: column; align-items: center;
+        }
+        @keyframes fadeInAlarm { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .alarm-title { font-size: 28px; font-weight: 800; color: white; margin-bottom: 10px; }
+        .alarm-msg { font-size: 16px; color: rgba(255,255,255,0.9); margin-bottom: 30px; }
+        .alarm-btn { width: 100%; padding: 16px; border-radius: 20px; border: none; font-size: 16px; font-weight: 700; margin-bottom: 12px; cursor: pointer; transition: transform 0.1s; }
+        .alarm-btn:active { transform: scale(0.95); }
+        .stop-btn { background: white; color: #f04452; }
+        .snooze-btn { background: rgba(255,255,255,0.3); color: white; backdrop-filter: blur(5px); }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay">
+        <svg class="spinner-svg" viewBox="25 25 50 50">
+            <circle class="spinner-circle" cx="50" cy="50" r="20"></circle>
+        </svg>
+    </div>
+
+    <div id="alarmOverlay">
+        <div class="alarm-content-box">
+            <div class="alarm-title" id="alarmTitleText">리마인더</div>
+            <div class="alarm-msg" id="alarmSubText">을/를 할 시간입니다.</div>
+            <button class="alarm-btn stop-btn" onclick="stopAlarm()">종료</button>
+            <button class="alarm-btn snooze-btn" onclick="snoozeAlarm()">연기 (재알림)</button>
+        </div>
+    </div>
+
+    <div class="top-bar">
+        <div style="display:flex; align-items:center;">
+            <button class="back-btn" onclick="location.href='today.html'">
+                <span class="material-symbols-rounded">arrow_back</span>
+            </button>
+            <input type="date" id="datePicker" class="date-display">
+        </div>
+        <button class="save-btn" onclick="saveData()">저장</button>
+    </div>
+
+    <div class="main-container">
+        <div class="left-panel">
+            <div class="section-title">TIME TABLE</div>
+            <div class="timetable-grid" id="timeGrid"></div>
+            <div class="left-footer">
+                <button class="reset-btn" onclick="clearAllGrid()">전체 비우기</button>
+                <div class="stat-item">
+                    <span>가용 시간</span>
+                    <span class="stat-val" id="availTime">18h 00m</span>
+                </div>
+                <div class="stat-item">
+                    <span>총 공부</span>
+                    <span class="stat-val" id="totalTime" style="color:var(--primary-color)">00h 00m</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="task-list-section">
+                <table class="plan-table">
+                    <colgroup>
+                        <col width="12%"> <col width="18%"> <col width="35%"> <col width="10%"> <col width="12%"> <col width="13%">
+                    </colgroup>
+                    <thead>
+                        <tr><th>순위</th><th>과목</th><th>할일</th><th>✔</th><th>예상</th><th>소요</th></tr>
+                    </thead>
+                </table>
+                <div style="overflow-y: auto; flex-grow: 1;">
+                    <table class="plan-table">
+                        <colgroup>
+                            <col width="12%"> <col width="18%"> <col width="35%"> <col width="10%"> <col width="12%"> <col width="13%">
+                        </colgroup>
+                        <tbody id="taskListBody"></tbody>
+                    </table>
+                    <div style="padding:15px; text-align:center;">
+                        <button onclick="addRow()" style="background:#f9fafb; border:1px dashed #d1d6db; padding:10px 24px; border-radius:20px; color:#8b95a1; font-size:13px; cursor:pointer;">+ 항목 추가</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="reflection-section">
+                <div class="reflection-header">오늘하루 성찰하기 & 내일을 위해 다짐하기</div>
+                <div class="reflection-content">
+                    <div class="q-box">
+                        <label class="q-label">1. 우선순위에 맞춰 오늘의 계획을 잘 실천했나요?</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="ref_q1" value="1">
+                                <div class="radio-display">매우부족</div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="ref_q1" value="2">
+                                <div class="radio-display">부족</div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="ref_q1" value="3">
+                                <div class="radio-display">보통</div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="ref_q1" value="4">
+                                <div class="radio-display">잘함</div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="ref_q1" value="5">
+                                <div class="radio-display">매우잘함</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="q-box">
+                        <label class="q-label">2. 오늘 완수하지 못한 계획은 무엇인가요?</label>
+                        <textarea class="box-input" id="ref_q2"></textarea>
+                    </div>
+
+                    <div class="q-box">
+                        <label class="q-label">3. 지키지 못한 계획을 위한 필요 시간?</label>
+                        <textarea class="box-input" id="ref_q3"></textarea>
+                    </div>
+
+                    <div class="q-box">
+                        <label class="q-label">4. 오늘 가장 뿌듯했던 일 한가지는?</label>
+                        <textarea class="box-input" id="ref_q4"></textarea>
+                    </div>
+
+                    <div class="concept-area">
+                        <table class="concept-table">
+                            <tr style="height: 30px;">
+                                <td class="concept-label">과목</td>
+                                <td><input type="text" class="concept-input" id="sub_subject"></td>
+                            </tr>
+                            <tr style="height: 30px;">
+                                <td class="concept-label">단원/목표</td>
+                                <td><input type="text" class="concept-input" id="sub_unit"></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" style="border-bottom:none; padding-bottom:0; height:40%;">
+                                    <label class="q-label" style="font-size:11px; margin-bottom:2px;">1. 가장 중요한, 시험에 꼭 나올것 같은 개념/내용은?</label>
+                                    <textarea class="concept-textarea" id="sub_concept_imp"></textarea>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" style="border-top:1px solid var(--line-color); padding-top:4px; height:40%;">
+                                    <label class="q-label" style="font-size:11px; margin-bottom:2px;">2. 이해가 잘 안되거나 다시 한번 복습이 필요한 개념?</label>
+                                    <textarea class="concept-textarea" id="sub_concept_rev"></textarea>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:center;">
+                <div class="circle-check"></div>
+            </div>
+            <div class="modal-msg" id="modalMsg">완료했습니다!</div>
+            <button class="modal-btn" onclick="closeModal()">확인</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-box">
+            <div class="modal-msg">정말 이 항목을<br>삭제하시겠습니까?</div>
+            <div class="modal-row">
+                <button class="modal-btn cancel" onclick="closeConfirmModal()">취소</button>
+                <button class="modal-btn danger" onclick="confirmDelete()">삭제</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://jaewondev.pythonanywhere.com';
+        const userName = localStorage.getItem('loginUser') || "GUEST";
+        
+        let urlParams = new URLSearchParams(window.location.search);
+        let currentDate = urlParams.get('date') || new Date().toISOString().split('T')[0];
+
+        const START_HOUR = 6;
+        const END_HOUR = 24; 
+        const TOTAL_HOURS = END_HOUR - START_HOUR;
+        const TOTAL_CELLS = TOTAL_HOURS * 6;
+
+        let planData = {
+            date: currentDate,
+            grid: Array(TOTAL_CELLS).fill(0),
+            tasks: [],
+            // [추가] 성찰 데이터 초기화
+            reflection: {
+                q1: null, q2: "", q3: "", q4: "",
+                sub_subject: "", sub_unit: "", sub_imp: "", sub_rev: ""
+            }
+        };
+        
+        let lastClickedIndex = null;
+        let deleteTargetIndex = null; // 삭제할 행 인덱스 저장
+
+        // 리마인더 관련
+        let reminders = [];
+        let activeAlarm = null;
+        let snoozedAlarms = [];
+        const sound1 = new Audio('https://appreminder.corerepublix.kro.kr/other/sound2.mp3');
+        const sound2 = new Audio('https://appreminder.corerepublix.kro.kr/other/sound1.mp3');
+        sound2.loop = true;
+
+        window.onload = function() {
+            setTimeout(() => {
+                const loader = document.getElementById('loadingOverlay');
+                loader.style.opacity = '0';
+                setTimeout(() => { loader.style.display = 'none'; }, 300);
+            }, 2000);
+
+            const datePicker = document.getElementById('datePicker');
+            datePicker.value = currentDate;
+            
+            datePicker.addEventListener('change', function() {
+                const newDate = this.value;
+                const newUrl = `${window.location.pathname}?date=${newDate}&new=true`;
+                window.history.pushState({path: newUrl}, '', newUrl);
+                currentDate = newDate;
+                planData.date = newDate;
+                fetchData(); 
+            });
+
+            fetchData();
+            loadReminders();
+            setInterval(checkAlarm, 1000);
+            document.body.addEventListener('touchstart', unlockAudio, { once: true });
+            document.body.addEventListener('click', unlockAudio, { once: true });
+        };
+
+        function fetchData() {
+            fetch(`${API_URL}/get-plan-detail`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: userName, date: currentDate })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    planData = data.plan;
+                    if(!planData.grid || planData.grid.length !== TOTAL_CELLS) {
+                        planData.grid = Array(TOTAL_CELLS).fill(0); 
+                    }
+                    if(!planData.reflection) {
+                         planData.reflection = { q1: null, q2: "", q3: "", q4: "", sub_subject: "", sub_unit: "", sub_imp: "", sub_rev: "" };
+                    }
+                } else {
+                    planData = {
+                        date: currentDate,
+                        grid: Array(TOTAL_CELLS).fill(0),
+                        tasks: [],
+                        reflection: { q1: null, q2: "", q3: "", q4: "", sub_subject: "", sub_unit: "", sub_imp: "", sub_rev: "" }
+                    };
+                    for(let i=0; i<5; i++) addRowData();
+                }
+                renderAll();
+            })
+            .catch(err => {
+                console.error("서버 연결 실패:", err);
+            });
+        }
+
+        function renderAll() {
+            renderGrid();
+            renderTasks();
+            renderReflection();
+            calcStats();
+        }
+
+        // --- Grid Logic ---
+        function renderGrid() {
+            const gridEl = document.getElementById('timeGrid');
+            gridEl.innerHTML = "";
+            for(let h=0; h < TOTAL_HOURS; h++) {
+                const hourLabel = START_HOUR + h;
+                const row = document.createElement('div');
+                row.className = 'grid-row';
+                row.innerHTML = `<div class="time-label">${hourLabel}</div>`;
+                const cellContainer = document.createElement('div');
+                cellContainer.className = 'cell-container';
+                for(let m=0; m<6; m++) {
+                    const idx = h*6 + m;
+                    const cell = document.createElement('div');
+                    let classes = `cell ${planData.grid[idx] ? 'filled' : ''}`;
+                    if(lastClickedIndex === idx) classes += ' range-start';
+                    cell.className = classes;
+                    cell.onclick = () => handleCellClick(idx);
+                    cellContainer.appendChild(cell);
+                }
+                row.appendChild(cellContainer);
+                gridEl.appendChild(row);
+            }
+        }
+        function handleCellClick(idx) {
+            if (lastClickedIndex !== null && lastClickedIndex !== idx) {
+                const start = Math.min(lastClickedIndex, idx);
+                const end = Math.max(lastClickedIndex, idx);
+                for(let i=start; i<=end; i++) planData.grid[i] = 1; 
+                lastClickedIndex = null;
+            } else {
+                planData.grid[idx] = planData.grid[idx] ? 0 : 1;
+                if(lastClickedIndex === idx) lastClickedIndex = null;
+                else {
+                    if(planData.grid[idx] === 1) lastClickedIndex = idx;
+                    else lastClickedIndex = null;
+                }
+            }
+            renderGrid();
+            calcStats();
+        }
+        function clearAllGrid() {
+            if(confirm("시간표를 모두 지우시겠습니까?")) {
+                planData.grid = Array(TOTAL_CELLS).fill(0);
+                lastClickedIndex = null;
+                renderAll();
+            }
+        }
+
+        // --- Tasks Logic (Drag & Drop, Delete) ---
+        function renderTasks() {
+            const tbody = document.getElementById('taskListBody');
+            tbody.innerHTML = "";
+            
+            planData.tasks.forEach((task, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = 'draggable-row';
+                tr.setAttribute('draggable', 'true');
+                tr.dataset.index = idx;
+
+                // Drag Events
+                tr.addEventListener('dragstart', handleDragStart);
+                tr.addEventListener('dragover', handleDragOver);
+                tr.addEventListener('drop', handleDrop);
+                tr.addEventListener('dragenter', handleDragEnter);
+                tr.addEventListener('dragleave', handleDragLeave);
+
+                tr.innerHTML = `
+                    <td style="display:flex; align-items:center; justify-content:center;">
+                        <input class="clean-input" value="${task.rank}" onchange="updateTask(${idx}, 'rank', this.value)" style="width:25px;">
+                        <button class="delete-btn" onclick="requestDelete(${idx})">×</button>
+                    </td>
+                    <td><input class="clean-input" value="${task.subject}" placeholder="과목" onchange="updateTask(${idx}, 'subject', this.value)"></td>
+                    <td><input class="clean-input text-left" value="${task.content}" placeholder="할 일 입력" onchange="updateTask(${idx}, 'content', this.value)"></td>
+                    <td>
+                        <label class="check-wrapper">
+                            <input type="checkbox" class="hidden-checkbox" ${task.done ? 'checked' : ''} onchange="toggleCheck(${idx})">
+                            <div class="custom-box">
+                                <svg class="check-svg" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                        </label>
+                    </td>
+                    <td><input type="number" class="clean-input" value="${task.est}" placeholder="-" onchange="updateTask(${idx}, 'est', this.value)"></td>
+                    <td><input type="number" class="clean-input" value="${task.act}" placeholder="-" onchange="updateTask(${idx}, 'act', this.value); calcStats();"></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Drag & Drop Handlers
+        let dragSrcEl = null;
+        function handleDragStart(e) {
+            dragSrcEl = this;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+            this.classList.add('dragging');
+        }
+        function handleDragOver(e) {
+            if (e.preventDefault) e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+        function handleDragEnter(e) { this.classList.add('drag-over'); }
+        function handleDragLeave(e) { this.classList.remove('drag-over'); }
+        
+        function handleDrop(e) {
+            if (e.stopPropagation) e.stopPropagation();
+            if (dragSrcEl !== this) {
+                const srcIdx = parseInt(dragSrcEl.dataset.index);
+                const targetIdx = parseInt(this.dataset.index);
+                
+                // Array Move
+                const item = planData.tasks.splice(srcIdx, 1)[0];
+                planData.tasks.splice(targetIdx, 0, item);
+                
+                // Auto Renumber (Logic: if rank is number, reorder 1,2,3... else keep)
+                renumberTasks();
+                renderTasks();
+            }
+            this.classList.remove('drag-over');
+            dragSrcEl.classList.remove('dragging');
+            return false;
+        }
+
+        function renumberTasks() {
+            planData.tasks.forEach((task, index) => {
+                // 숫자인 경우에만 재할당 (??? 같은 문자는 유지)
+                if (!isNaN(task.rank) && task.rank !== '') {
+                    task.rank = index + 1;
+                }
+            });
+        }
+
+        function requestDelete(idx) {
+            deleteTargetIndex = idx;
+            document.getElementById('confirmModal').classList.add('show');
+            document.getElementById('confirmModal').classList.remove('hide');
+        }
+
+        function closeConfirmModal() {
+            const m = document.getElementById('confirmModal');
+            m.classList.remove('show');
+            m.classList.add('hide');
+            deleteTargetIndex = null;
+        }
+
+        function confirmDelete() {
+            if(deleteTargetIndex !== null) {
+                planData.tasks.splice(deleteTargetIndex, 1);
+                closeConfirmModal();
+                renderTasks();
+                calcStats();
+                showModal("삭제되었습니다.");
+            }
+        }
+
+        function toggleCheck(idx) {
+            planData.tasks[idx].done = !planData.tasks[idx].done;
+            if(planData.tasks[idx].done) {
+                showModal(`"${planData.tasks[idx].content || '할 일'}"<br>완료했습니다!`);
+            }
+        }
+        function updateTask(idx, key, val) { planData.tasks[idx][key] = val; }
+        function addRowData() {
+            planData.tasks.push({ rank: planData.tasks.length+1, subject: '', content: '', done: false, est: '', act: '' });
+        }
+        function addRow() { addRowData(); renderTasks(); }
+
+        // --- Reflection Logic ---
+        function renderReflection() {
+            const r = planData.reflection || {};
+            
+            // Radio
+            const radios = document.getElementsByName('ref_q1');
+            radios.forEach(rd => {
+                rd.checked = (rd.value == r.q1);
+            });
+            
+            document.getElementById('ref_q2').value = r.q2 || "";
+            document.getElementById('ref_q3').value = r.q3 || "";
+            document.getElementById('ref_q4').value = r.q4 || "";
+            
+            document.getElementById('sub_subject').value = r.sub_subject || "";
+            document.getElementById('sub_unit').value = r.sub_unit || "";
+            document.getElementById('sub_concept_imp').value = r.sub_imp || "";
+            document.getElementById('sub_concept_rev').value = r.sub_rev || "";
+        }
+
+        function saveReflectionToData() {
+            const radios = document.getElementsByName('ref_q1');
+            let q1Val = null;
+            radios.forEach(rd => { if(rd.checked) q1Val = rd.value; });
+            
+            planData.reflection = {
+                q1: q1Val,
+                q2: document.getElementById('ref_q2').value,
+                q3: document.getElementById('ref_q3').value,
+                q4: document.getElementById('ref_q4').value,
+                sub_subject: document.getElementById('sub_subject').value,
+                sub_unit: document.getElementById('sub_unit').value,
+                sub_imp: document.getElementById('sub_concept_imp').value,
+                sub_rev: document.getElementById('sub_concept_rev').value
+            };
+        }
+
+        // --- Stats & Save ---
+        function calcStats() {
+            const filled = planData.grid.filter(v => v===1).length;
+            const totalMin = TOTAL_HOURS * 60; 
+            const remain = totalMin - (filled * 10);
+            document.getElementById('availTime').innerText = minToTime(remain);
+
+            let actSum = 0;
+            planData.tasks.forEach(t => { if(t.act) actSum += parseInt(t.act); });
+            document.getElementById('totalTime').innerText = minToTime(actSum);
+        }
+        function minToTime(m) {
+            if(m < 0) m = 0;
+            const hour = Math.floor(m / 60);
+            const min = m % 60;
+            return `${hour}h ${min}m`;
+        }
+
+        function saveData() {
+            // 성찰 데이터 업데이트
+            saveReflectionToData();
+            planData.date = document.getElementById('datePicker').value;
+            
+            fetch(`${API_URL}/save-plan`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: userName, plan: planData })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    showModal("계획표가 저장되었습니다.");
+                } else {
+                    alert("저장 실패: " + data.message);
+                }
+            })
+            .catch(err => {
+                alert("서버 통신 오류");
+            });
+        }
+
+        const modalEl = document.getElementById('modal');
+        function showModal(msg) {
+            document.getElementById('modalMsg').innerHTML = msg;
+            modalEl.classList.remove('hide');
+            modalEl.classList.add('show');
+        }
+        function closeModal() {
+            modalEl.classList.remove('show');
+            modalEl.classList.add('hide');
+            setTimeout(() => {
+                if(modalEl.classList.contains('hide')) {
+                    modalEl.classList.remove('show', 'hide'); 
+                }
+            }, 300);
+        }
+
+        // --- Alarm Logic ---
+        function unlockAudio() {
+            sound1.play().then(() => { sound1.pause(); sound1.currentTime = 0; }).catch(() => {});
+            sound2.play().then(() => { sound2.pause(); sound2.currentTime = 0; }).catch(() => {});
+        }
+        function loadReminders() {
+            if(!userName || userName === "GUEST") return;
+            fetch(`${API_URL}/get-reminders`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name: userName })
+            })
+            .then(res => res.json())
+            .then(data => { reminders = data.reminders || []; })
+            .catch(err => console.log('알람 데이터 로드 실패', err));
+        }
+        function checkAlarm() {
+            const now = new Date();
+            if(now.getSeconds() !== 0) return;
+            const timeStr = now.toTimeString().substring(0, 5);
+            const dateStr = now.toISOString().split('T')[0];
+            const day = now.getDay();
+
+            reminders.forEach(r => {
+                let trigger = false;
+                if(r.time === timeStr) {
+                    if(r.repeat_type === 'daily') trigger = true;
+                    if(r.repeat_type === 'none' && r.target_date === dateStr) trigger = true;
+                    if(r.repeat_type === 'weekly' && r.repeat_days.split(',').map(Number).includes(day)) trigger = true;
+                    if(r.repeat_type === 'weekly_once' && isSameWeek(dateStr, r.target_date)) {
+                        if(r.repeat_days.split(',').map(Number).includes(day)) trigger = true;
+                    }
+                }
+                if(trigger) triggerAlarm(r);
+            });
+            snoozedAlarms.forEach((item, idx) => {
+                if(item.triggerTime === timeStr) {
+                    triggerAlarm(item.original);
+                    snoozedAlarms.splice(idx, 1);
+                }
+            });
+        }
+        function isSameWeek(date1Str, date2Str) {
+            const d1 = new Date(date1Str);
+            const d2 = new Date(date2Str);
+            const d1Sun = new Date(d1); d1Sun.setDate(d1.getDate() - d1.getDay());
+            const d2Sun = new Date(d2); d2Sun.setDate(d2.getDate() - d2.getDay());
+            return d1Sun.toDateString() === d2Sun.toDateString();
+        }
+        function triggerAlarm(r) {
+            activeAlarm = r;
+            document.getElementById('alarmTitleText').innerText = r.title;
+            document.getElementById('alarmSubText').innerText = `${r.title}을/를 할 시간입니다.`;
+            document.getElementById('alarmOverlay').style.display = 'flex';
+            sound1.currentTime = 0; sound2.currentTime = 0;
+            sound1.play().then(() => { sound1.onended = () => { sound2.play(); }; }).catch(e => console.log("Audio Error:", e));
+        }
+        function stopAlarm() { closeOverlay(); }
+        function snoozeAlarm() {
+            closeOverlay();
+            if(activeAlarm && activeAlarm.snooze > 0) {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() + activeAlarm.snooze);
+                snoozedAlarms.push({ triggerTime: now.toTimeString().substring(0,5), original: activeAlarm });
+                alert(`${activeAlarm.snooze}분 뒤 다시 알립니다`);
+            }
+        }
+        function closeOverlay() {
+            document.getElementById('alarmOverlay').style.display = 'none';
+            sound1.pause(); sound2.pause(); sound1.currentTime = 0; sound2.currentTime = 0; sound1.onended = null;
+        }
+    </script>
+</body>
+</html>

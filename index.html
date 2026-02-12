@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>App Login</title>
+    <style>
+        /* 기본 리셋 및 폰트 설정 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", Roboto, "Noto Sans KR", sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #ffffff;
+        }
+
+        body {
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 1 / 1;
+            margin: 0 auto;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            position: relative;
+        }
+
+        /* 화면 컨테이너 */
+        .screen {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #input-screen {
+            display: none;
+        }
+
+        #success-screen {
+            display: none;
+            justify-content: center;
+            padding-bottom: 20px;
+        }
+
+        /* 상단 컨텐츠 영역 */
+        .content-area {
+            padding: 40px 24px 0 24px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #191f28;
+            margin-bottom: 40px;
+            line-height: 1.4;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .toss-input {
+            width: 100%;
+            padding: 10px 0;
+            font-size: 20px;
+            color: #333d4b;
+            border: none;
+            border-bottom: 2px solid #e5e8eb;
+            outline: none;
+            transition: border-color 0.3s;
+            background: transparent;
+        }
+
+        .toss-input:focus {
+            border-bottom: 2px solid #0064FF;
+        }
+
+        .toss-input::placeholder {
+            color: #b0b8c1;
+            font-size: 20px;
+        }
+
+        /* 자동 로그인 체크박스 스타일 */
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            user-select: none;
+            width: fit-content;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            display: none;
+        }
+
+        .custom-checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid #d1d6db;
+            border-radius: 6px;
+            margin-right: 10px;
+            position: relative;
+            transition: all 0.2s ease;
+            background-color: white;
+            flex-shrink: 0;
+        }
+
+        .checkbox-container input:checked + .custom-checkbox {
+            background-color: #0064FF;
+            border-color: #0064FF;
+        }
+
+        .custom-checkbox::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 5px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: translate(-50%, -60%) rotate(45deg);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .checkbox-container input:checked + .custom-checkbox::after {
+            opacity: 1;
+        }
+
+        .checkbox-label {
+            font-size: 16px;
+            color: #4e5968;
+        }
+
+        /* 하단 영역 (버튼) */
+        .bottom-area {
+            width: 100%;
+            padding-bottom: 20px;
+            background-color: #ffffff;
+            padding-left: 24px;
+            padding-right: 24px;
+        }
+
+        .next-btn-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .next-btn {
+            width: 100%;
+            padding: 18px 0;
+            background-color: #0064FF;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 58px;
+        }
+
+        .next-btn:active {
+            background-color: #0050cc;
+        }
+
+        .next-btn:disabled {
+            background-color: #0064FF;
+            opacity: 0.9;
+            cursor: not-allowed;
+        }
+        
+        .signup-btn {
+            padding: 10px 20px;
+            background-color: #f2f4f6;
+            color: #4e5968;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .signup-btn:active {
+            background-color: #e5e8eb;
+        }
+
+        /* 성공 화면 스타일 */
+        .confirm-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .confirm-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #191f28;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .check-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0;
+        }
+
+        /* 구글 스타일 로딩 스피너 (SVG) */
+        .spinner-svg {
+            animation: rotate 2s linear infinite;
+        }
+
+        .spinner-circle {
+            stroke-width: 4;
+            stroke-dasharray: 1, 200;
+            stroke-dashoffset: 0;
+            stroke-linecap: round;
+            fill: none;
+            animation: dash 1.5s ease-in-out infinite;
+        }
+        
+        /* 색상 변형 */
+        .stroke-blue { stroke: #0064FF; } /* 파란색 */
+        .stroke-white { stroke: #ffffff; } /* 흰색 */
+
+        /* 버튼용 작은 사이즈 */
+        .spinner-btn {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* 오버레이용 큰 사이즈 */
+        .spinner-large {
+            width: 50px;
+            height: 50px;
+        }
+
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes dash {
+            0% { stroke-dasharray: 1, 200; stroke-dashoffset: 0; }
+            50% { stroke-dasharray: 89, 200; stroke-dashoffset: -35px; }
+            100% { stroke-dasharray: 89, 200; stroke-dashoffset: -124px; }
+        }
+
+        /* 모달 스타일 (공용) */
+        #loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #custom-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background-color: rgba(51, 61, 75, 0.95);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            z-index: 3000;
+            width: 80%;
+            text-align: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        #custom-modal.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-overlay">
+        <svg class="spinner-svg spinner-large" viewBox="25 25 50 50">
+            <circle class="spinner-circle stroke-blue" cx="50" cy="50" r="20"></circle>
+        </svg>
+    </div>
+
+    <div id="input-screen" class="screen">
+        <div class="content-area">
+            <div class="title">안녕하세요<br>로그인해주세요</div>
+            
+            <div class="form-group">
+                <input type="text" id="login-id" class="toss-input" placeholder="아이디 또는 이메일" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <input type="password" id="login-pw" class="toss-input" placeholder="비밀번호" autocomplete="off">
+            </div>
+
+            <label class="checkbox-container">
+                <input type="checkbox" id="auto-login-check">
+                <span class="custom-checkbox"></span>
+                <span class="checkbox-label">자동 로그인</span>
+            </label>
+        </div>
+
+        <div class="bottom-area">
+            <div class="next-btn-wrapper">
+                <button id="login-btn" class="next-btn" onclick="attemptLogin()">로그인</button>
+                <button class="signup-btn" onclick="location.href='newaccount.html'">또는 회원가입</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="success-screen" class="screen">
+        <div class="confirm-content">
+            <img src="icon/check.webp" class="check-icon" alt="성공">
+            <div class="confirm-title">
+                로그인되었습니다
+            </div>
+        </div>
+    </div>
+
+    <div id="custom-modal">메시지 내용</div>
+
+    <script>
+        // 초기 로딩 및 로그인 상태 확인 로직 (핵심 수정됨)
+        window.addEventListener('DOMContentLoaded', () => {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const inputScreen = document.getElementById('input-screen');
+            
+            // 1. app.html과 호환되려면 무조건 localStorage에 loginUser가 있어야 함
+            const savedUser = localStorage.getItem('loginUser');
+            // 2. 자동 로그인 설정 여부 확인
+            const isAutoLogin = localStorage.getItem('isAutoLogin') === 'true';
+            // 3. 현재 브라우저 세션(탭)이 유지되고 있는지 확인
+            const isSessionActive = sessionStorage.getItem('sessionActive') === 'true';
+
+            // [판단 로직]
+            // 사용자 정보가 있고, (자동로그인이 켜져있거나 OR 현재 세션이 살아있으면) => 로그인 통과
+            if (savedUser && (isAutoLogin || isSessionActive)) {
+                setTimeout(() => { window.location.href = 'app.html'; }, 800);
+            } else {
+                // 그 외의 경우 (자동로그인 껐는데 브라우저 닫았다 다시 켠 경우 등)
+                // localStorage에 남아있는 유저 정보를 지워서 app.html 오류 방지 및 로그아웃 처리
+                if(!isAutoLogin) {
+                    localStorage.removeItem('loginUser');
+                }
+                
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                    inputScreen.style.display = 'flex';
+                }, 500);
+            }
+        });
+
+        function showModal(message) {
+            const modal = document.getElementById('custom-modal');
+            modal.innerText = message;
+            modal.classList.add('show');
+            setTimeout(() => { modal.classList.remove('show'); }, 2000);
+        }
+
+        // 버튼 로딩 상태 (구글 스타일)
+        function setButtonLoading(btnId, isLoading, originalText) {
+            const btn = document.getElementById(btnId);
+            if (isLoading) {
+                btn.disabled = true;
+                btn.innerHTML = `
+                    <svg class="spinner-svg spinner-btn" viewBox="25 25 50 50">
+                        <circle class="spinner-circle stroke-white" cx="50" cy="50" r="20"></circle>
+                    </svg>
+                `;
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        function attemptLogin() {
+            const loginId = document.getElementById('login-id').value;
+            const password = document.getElementById('login-pw').value;
+            const isAutoLogin = document.getElementById('auto-login-check').checked;
+            const loginBtnId = 'login-btn';
+            const originalBtnText = '로그인';
+
+            if (!loginId || !password) {
+                showModal("아이디와 비밀번호를 입력해주세요.");
+                return;
+            }
+
+            setButtonLoading(loginBtnId, true);
+
+            fetch('https://jaewondev.pythonanywhere.com/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    login_id: loginId,
+                    password: password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                setButtonLoading(loginBtnId, false, originalBtnText);
+
+                if (data.success) {
+                    // [중요 수정] 로그인 성공 시 항상 localStorage에 저장 (app.html 호환성 위해)
+                    localStorage.setItem('loginUser', data.name);
+                    
+                    // 자동 로그인 여부 저장
+                    localStorage.setItem('isAutoLogin', isAutoLogin);
+                    
+                    // 현재 세션 활성화 표시 (브라우저 닫으면 사라짐)
+                    sessionStorage.setItem('sessionActive', 'true');
+                    
+                    document.getElementById('input-screen').style.display = 'none';
+                    document.getElementById('success-screen').style.display = 'flex';
+
+                    setTimeout(function() {
+                        window.location.href = 'app.html';
+                    }, 1000);
+                } else {
+                    showModal(data.message);
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                setButtonLoading(loginBtnId, false, originalBtnText);
+                showModal("서버와 통신할 수 없습니다.");
+            });
+        }
+    </script>
+</body>
+</html>

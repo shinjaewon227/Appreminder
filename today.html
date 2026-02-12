@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan List</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", Roboto, sans-serif; }
+        body { background-color: #f2f4f6; padding: 24px; min-height: 100vh; position: relative; }
+        
+        /* 로딩 애니메이션 */
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            transition: opacity 0.3s ease;
+        }
+        .spinner-svg {
+            width: 50px; height: 50px;
+            animation: rotate 2s linear infinite;
+        }
+        .spinner-circle {
+            stroke: #3182f6;
+            stroke-width: 4;
+            stroke-dasharray: 1, 200;
+            stroke-dashoffset: 0;
+            stroke-linecap: round;
+            fill: none;
+            animation: dash 1.5s ease-in-out infinite;
+        }
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+        @keyframes dash {
+            0% { stroke-dasharray: 1, 200; stroke-dashoffset: 0; }
+            50% { stroke-dasharray: 89, 200; stroke-dashoffset: -35px; }
+            100% { stroke-dasharray: 89, 200; stroke-dashoffset: -124px; }
+        }
+
+        /* 헤더 */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .back-btn { background: none; border: none; cursor: pointer; color: #333; display: flex; align-items: center; }
+        .page-title { font-size: 20px; font-weight: 700; color: #191f28; }
+        
+        /* [수정] 상단 텍스트 버튼 스타일 */
+        .add-btn {
+            background: none; border: none; cursor: pointer;
+            font-size: 16px; font-weight: 600; color: #3182f6;
+            padding: 4px 8px;
+        }
+        .add-btn:active { opacity: 0.7; }
+
+        /* 카드 리스트 */
+        .date-card {
+            background: white; border-radius: 16px; padding: 20px; margin-bottom: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03); cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: transform 0.2s;
+        }
+        .date-card:active { transform: scale(0.98); }
+        .card-date { font-size: 18px; font-weight: 600; color: #333; }
+        .card-arrow { color: #b0b8c1; font-size: 24px; }
+
+        /* [추가] 알람 오버레이 스타일 (블러 효과 적용) */
+        #alarmOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 10000; 
+            display: none; 
+            flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 40px;
+            animation: fadeInAlarm 0.5s ease;
+        }
+        
+        .alarm-content-box {
+            background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%, #a18cd1 100%);
+            background-size: 200% 200%;
+            animation: gradientBG 5s ease infinite;
+            padding: 40px 30px;
+            border-radius: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%; max-width: 320px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        @keyframes fadeInAlarm { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+        .alarm-title { font-size: 28px; font-weight: 800; color: white; margin-bottom: 10px; }
+        .alarm-msg { font-size: 16px; color: rgba(255,255,255,0.9); margin-bottom: 30px; }
+        .alarm-btn { width: 100%; padding: 16px; border-radius: 20px; border: none; font-size: 16px; font-weight: 700; margin-bottom: 12px; cursor: pointer; transition: transform 0.1s; }
+        .alarm-btn:active { transform: scale(0.95); }
+        .stop-btn { background: white; color: #f04452; }
+        .snooze-btn { background: rgba(255,255,255,0.3); color: white; backdrop-filter: blur(5px); }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay">
+        <svg class="spinner-svg" viewBox="25 25 50 50">
+            <circle class="spinner-circle" cx="50" cy="50" r="20"></circle>
+        </svg>
+    </div>
+
+    <div id="alarmOverlay">
+        <div class="alarm-content-box">
+            <div class="alarm-title" id="alarmTitleText">리마인더</div>
+            <div class="alarm-msg" id="alarmSubText">을/를 할 시간입니다.</div>
+            <button class="alarm-btn stop-btn" onclick="stopAlarm()">종료</button>
+            <button class="alarm-btn snooze-btn" onclick="snoozeAlarm()">연기 (재알림)</button>
+        </div>
+    </div>
+
+    <header>
+        <button class="back-btn" onclick="location.href='app.html'">
+            <span class="material-symbols-rounded">arrow_back</span>
+        </button>
+        <div class="page-title">계획 목록</div>
+        <button class="add-btn" onclick="addNewPlan()">계획 추가</button>
+    </header>
+
+    <div id="planList"></div>
+
+    <script>
+        const API_URL = 'https://jaewondev.pythonanywhere.com';
+        const userName = localStorage.getItem('loginUser');
+        let currentDate = new Date();
+
+        // 리마인더 및 알람 관련 변수
+        let reminders = [];
+        let activeAlarm = null;
+        let snoozedAlarms = [];
+        // sound1: 인트로 (먼저 재생), sound2: 반복음 (인트로 후 재생)
+        const sound1 = new Audio('https://appreminder.corerepublix.kro.kr/other/sound2.mp3');
+        const sound2 = new Audio('https://appreminder.corerepublix.kro.kr/other/sound1.mp3');
+        sound2.loop = true;
+
+        window.onload = function() {
+            // 로딩 화면 처리
+            setTimeout(() => {
+                const loader = document.getElementById('loadingOverlay');
+                if(loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => { loader.style.display = 'none'; }, 300);
+                }
+            }, 800);
+
+            if(!userName) {
+                alert("로그인이 필요합니다.");
+                location.href = 'index.html';
+                return;
+            }
+
+            loadPlanList();
+            
+            // 리마인더 로드 및 알람 체크 시작
+            loadReminders();
+            setInterval(checkAlarm, 1000);
+
+            // 오디오 정책 우회를 위한 이벤트 리스너
+            document.body.addEventListener('touchstart', unlockAudio, { once: true });
+            document.body.addEventListener('click', unlockAudio, { once: true });
+        }
+
+        function loadPlanList() {
+            fetch(`${API_URL}/get-plan-list`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: userName })
+            })
+            .then(res => res.json())
+            .then(data => {
+                const list = document.getElementById('planList');
+                list.innerHTML = "";
+                
+                if(data.plans.length === 0) {
+                    list.innerHTML = "<div style='text-align:center; color:#8b95a1; margin-top:50px;'>작성된 계획이 없습니다.</div>";
+                    return;
+                }
+
+                data.plans.forEach(p => {
+                    list.innerHTML += `
+                        <div class="date-card" onclick="goToDetail('${p.date}')">
+                            <span class="card-date">${p.date}</span>
+                            <span class="card-arrow material-symbols-rounded">chevron_right</span>
+                        </div>
+                    `;
+                });
+            })
+            .catch(err => console.error(err));
+        }
+
+        function addNewPlan() {
+            const today = new Date().toISOString().split('T')[0];
+            location.href = `plan_detail.html?date=${today}&new=true`;
+        }
+
+        function goToDetail(date) {
+            location.href = `plan_detail.html?date=${date}`;
+        }
+
+        /* --------------------------------------------------------
+           리마인더 및 알람 로직
+        -------------------------------------------------------- */
+        function unlockAudio() {
+            sound1.play().then(() => { sound1.pause(); sound1.currentTime = 0; }).catch(() => {});
+            sound2.play().then(() => { sound2.pause(); sound2.currentTime = 0; }).catch(() => {});
+        }
+
+        function loadReminders() {
+            if(!userName) return;
+
+            fetch(`${API_URL}/get-reminders`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name: userName })
+            })
+            .then(res => res.json())
+            .then(data => {
+                reminders = data.reminders || [];
+            })
+            .catch(err => console.log('알람 데이터 로드 실패', err));
+        }
+
+        function checkAlarm() {
+            const now = new Date();
+            if(now.getSeconds() !== 0) return;
+            const timeStr = now.toTimeString().substring(0, 5);
+            const dateStr = now.toISOString().split('T')[0];
+            const day = now.getDay();
+
+            reminders.forEach(r => {
+                let trigger = false;
+                if(r.time === timeStr) {
+                    if(r.repeat_type === 'daily') trigger = true;
+                    if(r.repeat_type === 'none' && r.target_date === dateStr) trigger = true;
+                    if(r.repeat_type === 'weekly' && r.repeat_days.split(',').map(Number).includes(day)) trigger = true;
+                    if(r.repeat_type === 'weekly_once' && isSameWeek(dateStr, r.target_date)) {
+                        if(r.repeat_days.split(',').map(Number).includes(day)) trigger = true;
+                    }
+                }
+                if(trigger) triggerAlarm(r);
+            });
+
+            snoozedAlarms.forEach((item, idx) => {
+                if(item.triggerTime === timeStr) {
+                    triggerAlarm(item.original);
+                    snoozedAlarms.splice(idx, 1);
+                }
+            });
+        }
+
+        function isSameWeek(date1Str, date2Str) {
+            const d1 = new Date(date1Str);
+            const d2 = new Date(date2Str);
+            const d1Sun = new Date(d1); d1Sun.setDate(d1.getDate() - d1.getDay());
+            const d2Sun = new Date(d2); d2Sun.setDate(d2.getDate() - d2.getDay());
+            return d1Sun.toDateString() === d2Sun.toDateString();
+        }
+
+        function triggerAlarm(r) {
+            activeAlarm = r;
+            document.getElementById('alarmTitleText').innerText = r.title;
+            document.getElementById('alarmSubText').innerText = `${r.title}을/를 할 시간입니다.`;
+            document.getElementById('alarmOverlay').style.display = 'flex';
+            
+            sound1.currentTime = 0;
+            sound2.currentTime = 0;
+            sound1.play().then(() => {
+                sound1.onended = () => {
+                    sound2.play();
+                };
+            }).catch(e => console.log("Audio Error:", e));
+        }
+
+        function stopAlarm() { 
+            closeOverlay(); 
+        }
+        
+        function snoozeAlarm() {
+            closeOverlay();
+            if(activeAlarm && activeAlarm.snooze > 0) {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() + activeAlarm.snooze);
+                snoozedAlarms.push({ triggerTime: now.toTimeString().substring(0,5), original: activeAlarm });
+                alert(`${activeAlarm.snooze}분 뒤 다시 알립니다`);
+            }
+        }
+        
+        function closeOverlay() {
+            document.getElementById('alarmOverlay').style.display = 'none';
+            sound1.pause();
+            sound2.pause();
+            sound1.currentTime = 0;
+            sound2.currentTime = 0;
+            sound1.onended = null;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reminder</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #f2f4f6; padding: 24px; min-height: 100vh; position: relative; padding-bottom: 100px; }
+        
+        /* 로딩 애니메이션 */
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 9999; display: flex; justify-content: center; align-items: center;
+            transition: opacity 0.3s ease;
+        }
+        .spinner-svg { width: 50px; height: 50px; animation: rotate 2s linear infinite; }
+        .spinner-circle { stroke: #3182f6; stroke-width: 4; stroke-dasharray: 1, 200; stroke-dashoffset: 0; stroke-linecap: round; fill: none; animation: dash 1.5s ease-in-out infinite; }
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+        @keyframes dash { 0% { stroke-dasharray: 1, 200; stroke-dashoffset: 0; } 50% { stroke-dasharray: 89, 200; stroke-dashoffset: -35px; } 100% { stroke-dasharray: 89, 200; stroke-dashoffset: -124px; } }
+
+        /* 헤더 */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .back-btn { background: none; border: none; cursor: pointer; color: #333; display: flex; align-items: center; }
+        .page-title { font-size: 20px; font-weight: 700; color: #191f28; }
+
+        /* 캘린더 */
+        .calendar-container { background: white; border-radius: 24px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .cal-title { font-size: 18px; font-weight: 700; }
+        .cal-nav-btn { background: none; border: none; cursor: pointer; padding: 5px; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; row-gap: 5px; column-gap: 5px; align-items: start; }
+        .cal-day-name { font-size: 13px; color: #8b95a1; font-weight: 500; margin-bottom: 10px; }
+        .cal-day-name:first-child { color: #f04452; }
+        .cal-date { min-height: 60px; height: auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 6px 2px; border-radius: 12px; cursor: pointer; position: relative; border: 1.5px solid transparent; transition: border-color 0.2s; }
+        .date-num { display: flex; justify-content: center; align-items: center; width: 28px; height: 28px; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+        .cal-date.today { border-color: #3182f6; }
+        .cal-date.today .date-num { background-color: #3182f6; color: white; border-radius: 8px; font-weight: 700; }
+        .cal-date.selected { border-color: #191f28; }
+        .cal-date.sunday .date-num { color: #f04452; }
+        .cal-date.today.sunday .date-num { color: white; }
+        .cal-item { width: 100%; font-size: 9px; color: #333; padding: 2px 4px; border-radius: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+
+        /* 리스트 */
+        .list-section { margin-top: 20px; }
+        .list-header { font-size: 16px; font-weight: 700; margin-bottom: 10px; color: #333; }
+        .reminder-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; border-left: 6px solid transparent; }
+        .remind-info { display: flex; flex-direction: column; gap: 4px; }
+        .remind-time { font-size: 14px; color: #3182f6; font-weight: 700; }
+        .remind-title { font-size: 16px; font-weight: 600; color: #191f28; }
+        .remind-sub { font-size: 12px; color: #8b95a1; }
+        .btn-wrap { display: flex; gap: 8px; }
+        .action-btn { background: #f2f4f6; border: none; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+        .edit-btn { color: #3182f6; }
+        .del-btn { color: #f04452; }
+
+        /* 폼 */
+        #reminderForm { display: none; background: white; border-radius: 24px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-top: 20px; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 14px; color: #6b7684; margin-bottom: 8px; font-weight: 500; }
+        .form-input { width: 100%; padding: 14px; border: 1px solid #e5e8eb; border-radius: 12px; font-size: 16px; outline: none; }
+        .time-display { width: 100%; padding: 14px; border: 1px solid #e5e8eb; border-radius: 12px; font-size: 18px; font-weight: 700; text-align: center; color: #333; cursor: pointer; background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="%23333" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>') no-repeat right 14px center; background-size: 20px; }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .select-btn { padding: 8px 16px; border-radius: 20px; border: 1px solid #e5e8eb; background: white; color: #6b7684; cursor: pointer; transition: all 0.2s; }
+        .select-btn.active { background-color: #3182f6; color: white; border-color: #3182f6; }
+        .day-selector { display: flex; gap: 5px; margin-top: 10px; justify-content: space-between; }
+        .day-check { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #e5e8eb; display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+        .day-check.active { background-color: #3182f6; color: white; border-color: #3182f6; }
+        .save-btn { width: 100%; background-color: #3182f6; color: white; padding: 16px; border-radius: 16px; border: none; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+        .cancel-btn { width: 100%; background-color: #f2f4f6; color: #333; padding: 16px; border-radius: 16px; border: none; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+
+        /* 색상 선택기 */
+        .color-group { display: flex; gap: 12px; justify-content: flex-start; }
+        .color-opt { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; }
+        .color-opt.active { border-color: #333; transform: scale(1.1); }
+
+        /* 모달 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10001; display: none; align-items: center; justify-content: center; }
+        .custom-modal { background: white; width: 85%; max-width: 320px; border-radius: 24px; padding: 24px; text-align: center; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; align-items: center; }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .time-picker-body { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; width: 100%; height: 180px; }
+        .tp-col { flex: 1; overflow-y: scroll; border: 1px solid #f2f4f6; border-radius: 12px; -ms-overflow-style: none; scrollbar-width: none; padding: 10px 0; }
+        .tp-col::-webkit-scrollbar { display: none; }
+        .tp-item { padding: 12px; font-size: 18px; color: #b0b8c1; cursor: pointer; transition: 0.2s; }
+        .tp-item.selected { background: #3182f6; color: white; font-weight: bold; border-radius: 12px; }
+        .success-icon { width: 60px; height: 60px; object-fit: contain; margin-bottom: 16px; display: none; }
+        .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; color: #333; }
+        .modal-btn { width: 100%; padding: 14px; border-radius: 16px; border: none; background: #3182f6; color: white; font-size: 16px; font-weight: 600; cursor: pointer; }
+
+        /* 알람 화면 */
+        #alarmOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%, #a18cd1 100%);
+            background-size: 400% 400%; animation: gradientBG 10s ease infinite;
+            z-index: 10000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 40px;
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .alarm-title { font-size: 32px; font-weight: 800; color: white; margin-bottom: 10px; }
+        .alarm-msg { font-size: 18px; color: rgba(255,255,255,0.9); margin-bottom: 50px; }
+        .alarm-btn { width: 100%; max-width: 280px; padding: 18px; border-radius: 30px; border: none; font-size: 18px; font-weight: 700; margin-bottom: 16px; cursor: pointer; }
+        .stop-btn { background: white; color: #f04452; }
+        .snooze-btn { background: rgba(255,255,255,0.3); color: white; backdrop-filter: blur(5px); }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay"><svg class="spinner-svg" viewBox="25 25 50 50"><circle class="spinner-circle" cx="50" cy="50" r="20"></circle></svg></div>
+
+    <div id="alarmOverlay">
+        <div class="alarm-title" id="alarmTitleText">리마인더</div>
+        <div class="alarm-msg" id="alarmSubText">을/를 할 시간입니다.</div>
+        <button class="alarm-btn stop-btn" onclick="stopAlarm()">종료</button>
+        <button class="alarm-btn snooze-btn" onclick="snoozeAlarm()">연기 (재알림)</button>
+    </div>
+
+    <div id="timeModal" class="modal-overlay">
+        <div class="custom-modal">
+            <div class="modal-title">시간 설정</div>
+            <div class="time-picker-body">
+                <div class="tp-col" id="tpAmpm">
+                    <div class="tp-item selected" onclick="setTp('ampm', 'AM', this)">오전</div>
+                    <div class="tp-item" onclick="setTp('ampm', 'PM', this)">오후</div>
+                </div>
+                <div class="tp-col" id="tpHour"></div>
+                <div class="tp-col" id="tpMin"></div>
+            </div>
+            <button class="modal-btn" onclick="confirmTime()">확인</button>
+        </div>
+    </div>
+
+    <div id="alertModal" class="modal-overlay">
+        <div class="custom-modal">
+            <img src="icon/check.webp" class="success-icon" id="alertIcon" alt="Check">
+            <div class="modal-title" id="alertMsg">저장되었습니다</div>
+            <button class="modal-btn" onclick="closeAlert()">확인</button>
+        </div>
+    </div>
+
+    <header>
+        <button class="back-btn" onclick="location.href='app.html'">
+            <span class="material-symbols-rounded">arrow_back</span>
+        </button>
+        <div class="page-title">캘린더</div>
+        <button class="back-btn" id="settingBtn">
+            <span class="material-symbols-rounded">settings</span>
+        </button>
+    </header>
+
+    <div class="calendar-container">
+        <div class="cal-header">
+            <button class="cal-nav-btn" onclick="changeMonth(-1)"><span class="material-symbols-rounded">chevron_left</span></button>
+            <div class="cal-title" id="calTitle"></div>
+            <button class="cal-nav-btn" onclick="changeMonth(1)"><span class="material-symbols-rounded">chevron_right</span></button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <div style="text-align: center;">
+        <button id="addBtn" class="save-btn" style="display:none; width:auto; padding: 12px 24px; border-radius: 24px;" onclick="showForm()">
+            + 리마인더 추가
+        </button>
+    </div>
+
+    <div id="reminderForm">
+        <input type="hidden" id="editId" value="">
+        
+        <div class="form-group">
+            <label class="form-label">리마인더 이름</label>
+            <input type="text" id="remindName" class="form-input" placeholder="예: 약 먹기">
+        </div>
+        <div class="form-group">
+            <label class="form-label">알림 시간</label>
+            <div id="remindTimeDisplay" class="time-display" onclick="openTimeModal()">오전 12:00</div>
+            <input type="hidden" id="remindTimeValue" value="00:00">
+        </div>
+        <div class="form-group">
+            <label class="form-label">색상 (파스텔톤)</label>
+            <div class="color-group">
+                <div class="color-opt active" style="background-color: #FFB3BA;" onclick="selectColor('#FFB3BA', this)"></div>
+                <div class="color-opt" style="background-color: #FFDFBA;" onclick="selectColor('#FFDFBA', this)"></div>
+                <div class="color-opt" style="background-color: #FFFFBA;" onclick="selectColor('#FFFFBA', this)"></div>
+                <div class="color-opt" style="background-color: #BAFFC9;" onclick="selectColor('#BAFFC9', this)"></div>
+                <div class="color-opt" style="background-color: #BAE1FF;" onclick="selectColor('#BAE1FF', this)"></div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">재알림 간격</label>
+            <div class="btn-group">
+                <button class="select-btn snooze-opt active" onclick="selectSnooze(0, this)">없음</button>
+                <button class="select-btn snooze-opt" onclick="selectSnooze(5, this)">5분</button>
+                <button class="select-btn snooze-opt" onclick="selectSnooze(10, this)">10분</button>
+                <button class="select-btn snooze-opt" onclick="selectSnooze(15, this)">15분</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">반복 설정</label>
+            <div class="btn-group">
+                <button class="select-btn repeat-opt active" onclick="selectRepeat('none', this)">없음</button>
+                <button class="select-btn repeat-opt" onclick="selectRepeat('daily', this)">매일</button>
+                <button class="select-btn repeat-opt" onclick="selectRepeat('weekly', this)">매주 요일</button>
+                <button class="select-btn repeat-opt" onclick="selectRepeat('weekly_once', this)">이번 주만(요일)</button>
+            </div>
+            <div id="weekSelector" class="day-selector" style="display: none;">
+                <div class="day-check" onclick="toggleDay(0, this)">일</div>
+                <div class="day-check" onclick="toggleDay(1, this)">월</div>
+                <div class="day-check" onclick="toggleDay(2, this)">화</div>
+                <div class="day-check" onclick="toggleDay(3, this)">수</div>
+                <div class="day-check" onclick="toggleDay(4, this)">목</div>
+                <div class="day-check" onclick="toggleDay(5, this)">금</div>
+                <div class="day-check" onclick="toggleDay(6, this)">토</div>
+            </div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="cancel-btn" onclick="cancelForm()">취소</button>
+            <button class="save-btn" id="saveBtnText" onclick="saveReminder()" style="margin-top:10px;">저장하기</button>
+        </div>
+    </div>
+
+    <div class="list-section" id="listSection">
+        <div class="list-header" id="listHeader">예정된 리마인더</div>
+        <div id="reminderList"></div>
+    </div>
+
+    <script>
+        const API_URL = 'https://jaewondev.pythonanywhere.com';
+        const userName = localStorage.getItem('loginUser');
+        
+        let currentDate = new Date();
+        let selectedDate = null;
+        let selectedSnooze = 0;
+        let selectedRepeat = 'none';
+        let selectedColor = '#FFB3BA'; 
+        let selectedWeekDays = [];
+        let reminders = [];
+        let activeAlarm = null;
+        let snoozedAlarms = [];
+        let tpSelection = { ampm: 'AM', hour: '12', min: '00' };
+
+        // sound1을 먼저 울릴 사운드(sound2.mp3)로 교체
+        const sound1 = new Audio('https://appreminder.corerepublix.kro.kr/other/sound2.mp3');
+        // sound2를 나중에 울릴 사운드(sound1.mp3)로 교체
+        const sound2 = new Audio('https://appreminder.corerepublix.kro.kr/other/sound1.mp3');
+        sound2.loop = true;
+
+        let pressTimer;
+        let isLongPress = false;
+        const settingBtn = document.getElementById('settingBtn');
+
+        function startPress(e) {
+            isLongPress = false;
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                playPreviewSound();
+            }, 5000);
+        }
+
+        function endPress(e) {
+            clearTimeout(pressTimer);
+            if (!isLongPress) {
+                location.href = 'setting.html';
+            }
+        }
+
+        if(settingBtn) {
+            settingBtn.addEventListener('mousedown', startPress);
+            settingBtn.addEventListener('touchstart', startPress, {passive: true});
+            settingBtn.addEventListener('mouseup', endPress);
+            settingBtn.addEventListener('touchend', endPress);
+            settingBtn.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+        }
+
+        function playPreviewSound() {
+            sound1.currentTime = 0;
+            sound2.currentTime = 0;
+            sound1.play().then(() => {
+                sound1.onended = () => {
+                    sound2.play();
+                };
+            }).catch(e => console.log("Audio Error:", e));
+            
+            showAlert("알림음 미리듣기 중... (확인을 누르면 멈춥니다)", true);
+            const oldClose = window.closeAlert;
+            window.closeAlert = function() {
+                sound1.pause();
+                sound2.pause();
+                sound1.currentTime = 0;
+                sound2.currentTime = 0;
+                sound1.onended = null;
+                document.getElementById('alertModal').style.display = 'none';
+            }
+        }
+
+        window.onload = function() {
+            setTimeout(() => {
+                const loader = document.getElementById('loadingOverlay');
+                if(loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => { loader.style.display = 'none'; }, 300);
+                }
+            }, 1000);
+
+            if(!userName) { alert("로그인이 필요합니다."); location.href='index.html'; return; }
+            
+            initTimePicker();
+            renderCalendar(); 
+            loadReminders();
+            
+            setInterval(checkAlarm, 1000);
+
+            document.body.addEventListener('touchstart', unlockAudio, { once: true });
+            document.body.addEventListener('click', unlockAudio, { once: true });
+        }
+
+        function unlockAudio() {
+            sound1.play().then(() => { sound1.pause(); sound1.currentTime = 0; }).catch(() => {});
+            sound2.play().then(() => { sound2.pause(); sound2.currentTime = 0; }).catch(() => {});
+        }
+
+        function checkAlarm() {
+            const now = new Date();
+            if(now.getSeconds() !== 0) return;
+            const timeStr = now.toTimeString().substring(0, 5);
+            const dateStr = now.toISOString().split('T')[0];
+            const day = now.getDay();
+
+            reminders.forEach(r => {
+                let trigger = false;
+                if(r.time === timeStr) {
+                    if(r.repeat_type === 'daily') trigger = true;
+                    if(r.repeat_type === 'none' && r.target_date === dateStr) trigger = true;
+                    if(r.repeat_type === 'weekly' && r.repeat_days.split(',').map(Number).includes(day)) trigger = true;
+                    if(r.repeat_type === 'weekly_once' && isSameWeek(dateStr, r.target_date)) {
+                        if(r.repeat_days.split(',').map(Number).includes(day)) trigger = true;
+                    }
+                }
+                if(trigger) triggerAlarm(r);
+            });
+
+            snoozedAlarms.forEach((item, idx) => {
+                if(item.triggerTime === timeStr) {
+                    triggerAlarm(item.original);
+                    snoozedAlarms.splice(idx, 1);
+                }
+            });
+        }
+
+        function triggerAlarm(r) {
+            activeAlarm = r;
+            document.getElementById('alarmTitleText').innerText = r.title;
+            document.getElementById('alarmSubText').innerText = `${r.title}을/를 할 시간입니다.`;
+            document.getElementById('alarmOverlay').style.display = 'flex';
+            
+            sound1.currentTime = 0;
+            sound2.currentTime = 0;
+            sound1.play().then(() => {
+                sound1.onended = () => {
+                    sound2.play();
+                };
+            }).catch(e => console.log("Audio Error:", e));
+        }
+
+        function stopAlarm() { 
+            closeOverlay(); 
+        }
+        
+        function snoozeAlarm() {
+            closeOverlay();
+            if(activeAlarm && activeAlarm.snooze > 0) {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() + activeAlarm.snooze);
+                snoozedAlarms.push({ triggerTime: now.toTimeString().substring(0,5), original: activeAlarm });
+                showAlert(`${activeAlarm.snooze}분 뒤 다시 알립니다`, true);
+            }
+        }
+        
+        function closeOverlay() {
+            document.getElementById('alarmOverlay').style.display = 'none';
+            sound1.pause();
+            sound2.pause();
+            sound1.currentTime = 0;
+            sound2.currentTime = 0;
+            sound1.onended = null;
+        }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            document.getElementById('calTitle').innerText = `${year}년 ${month + 1}월`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            const grid = document.getElementById('calGrid');
+            
+            if(!grid) return;
+
+            grid.innerHTML = `
+                <div class="cal-day-name" style="color:#f04452">일</div>
+                <div class="cal-day-name">월</div>
+                <div class="cal-day-name">화</div>
+                <div class="cal-day-name">수</div>
+                <div class="cal-day-name">목</div>
+                <div class="cal-day-name">금</div>
+                <div class="cal-day-name">토</div>
+            `;
+
+            for(let i=0; i<firstDay; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            for(let d=1; d<=lastDate; d++) {
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const dayOfWeek = new Date(year, month, d).getDay();
+                
+                const cell = document.createElement('div');
+                cell.className = 'cal-date';
+                if(dayOfWeek === 0) cell.classList.add('sunday');
+                if(dateStr === todayStr) cell.classList.add('today');
+                if(selectedDate === dateStr) cell.classList.add('selected');
+
+                const numSpan = document.createElement('div');
+                numSpan.className = 'date-num';
+                numSpan.innerText = d;
+                cell.appendChild(numSpan);
+
+                const daysReminders = getRemindersForDate(dateStr, dayOfWeek);
+                daysReminders.forEach(r => {
+                    const item = document.createElement('div');
+                    item.className = 'cal-item';
+                    if(r.color) item.style.backgroundColor = r.color;
+                    item.innerText = r.title;
+                    cell.appendChild(item);
+                });
+
+                cell.onclick = () => selectDate(dateStr, dayOfWeek);
+                grid.appendChild(cell);
+            }
+        }
+
+        function isSameWeek(date1Str, date2Str) {
+            const d1 = new Date(date1Str);
+            const d2 = new Date(date2Str);
+            const d1Sun = new Date(d1); d1Sun.setDate(d1.getDate() - d1.getDay());
+            const d2Sun = new Date(d2); d2Sun.setDate(d2.getDate() - d2.getDay());
+            return d1Sun.toDateString() === d2Sun.toDateString();
+        }
+
+        function getRemindersForDate(dateStr, dayOfWeek) {
+            return reminders.filter(r => {
+                if(r.repeat_type === 'daily') return true;
+                if(r.repeat_type === 'none' && r.target_date === dateStr) return true;
+                if(r.repeat_type === 'weekly') {
+                    const days = r.repeat_days.split(',').map(Number);
+                    return days.includes(dayOfWeek);
+                }
+                if(r.repeat_type === 'weekly_once') {
+                    if(!isSameWeek(dateStr, r.target_date)) return false;
+                    const days = r.repeat_days.split(',').map(Number);
+                    return days.includes(dayOfWeek);
+                }
+                return false;
+            }).sort((a,b) => a.time.localeCompare(b.time));
+        }
+
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function selectDate(dateStr, dayOfWeek) {
+            if(selectedDate === dateStr) {
+                selectedDate = null;
+                document.getElementById('addBtn').style.display = 'none';
+                document.getElementById('reminderForm').style.display = 'none';
+                showScheduledList();
+            } else {
+                selectedDate = dateStr;
+                document.getElementById('addBtn').style.display = 'inline-block';
+                document.getElementById('reminderForm').style.display = 'none';
+                
+                const list = getRemindersForDate(dateStr, dayOfWeek);
+                renderList(list, `${dateStr} 리마인더`);
+            }
+            renderCalendar();
+        }
+
+        function showScheduledList() {
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const currentTime = now.toTimeString().substring(0, 5);
+
+            const futureList = reminders.filter(r => {
+                let isScheduled = false;
+                if(r.repeat_type === 'none') {
+                    isScheduled = r.target_date >= today;
+                } else if(r.repeat_type === 'weekly_once') {
+                    isScheduled = r.target_date >= today || isSameWeek(r.target_date, today);
+                } else {
+                    isScheduled = true;
+                }
+
+                if(!isScheduled) return false;
+
+                // 오늘 날짜이거나, 오늘 반복되는 일정인 경우 시간이 지났으면 제외
+                let isTodayEvent = false;
+                if(r.repeat_type === 'none' && r.target_date === today) isTodayEvent = true;
+                else if(r.repeat_type === 'daily') isTodayEvent = true;
+                else if((r.repeat_type === 'weekly' || r.repeat_type === 'weekly_once') && r.repeat_days) {
+                    const todayIdx = now.getDay();
+                    const days = r.repeat_days.split(',').map(Number);
+                    if(days.includes(todayIdx)) {
+                        if(r.repeat_type === 'weekly_once') {
+                            if(isSameWeek(r.target_date, today)) isTodayEvent = true;
+                        } else {
+                            isTodayEvent = true;
+                        }
+                    }
+                }
+
+                if(isTodayEvent && r.time < currentTime) return false;
+
+                return true;
+            }).sort((a,b) => a.time.localeCompare(b.time));
+            
+            renderList(futureList, "예정된 리마인더");
+        }
+
+        function renderList(listData, titleText) {
+            document.getElementById('listHeader').innerText = titleText;
+            const container = document.getElementById('reminderList');
+            container.innerHTML = "";
+            
+            if(listData.length === 0) {
+                container.innerHTML = "<div style='text-align:center; color:#8b95a1; padding:20px; font-size:14px;'>일정이 없습니다.</div>";
+                return;
+            }
+
+            listData.forEach(r => {
+                const card = document.createElement('div');
+                card.className = 'reminder-card';
+                if(r.color) card.style.borderLeftColor = r.color;
+                
+                let subTxt = "";
+                const dNames = ['일','월','화','수','목','금','토'];
+
+                if(r.repeat_type === 'daily') subTxt = "매일 반복";
+                else if(r.repeat_type === 'weekly') {
+                    const days = r.repeat_days.split(',').map(d => dNames[d]).join(',');
+                    subTxt = `매주 ${days}`;
+                } else if(r.repeat_type === 'weekly_once') {
+                    const days = r.repeat_days.split(',').map(d => dNames[d]).join(',');
+                    subTxt = `이번 주만 ${days}`;
+                } else {
+                    subTxt = r.target_date;
+                }
+
+                const [h, m] = r.time.split(':');
+                const ampm = h >= 12 ? '오후' : '오전';
+                const h12 = h % 12 || 12;
+                const timeStr = `${ampm} ${h12}:${m}`;
+
+                card.innerHTML = `
+                    <div class="remind-info">
+                        <div class="remind-time" style="color:${r.color || '#3182f6'}">${timeStr}</div>
+                        <div class="remind-title">${r.title}</div>
+                        <div class="remind-sub">${subTxt}</div>
+                    </div>
+                    <div class="btn-wrap">
+                        <button class="action-btn edit-btn" onclick="editReminder(${r.id})">수정</button>
+                        <button class="action-btn del-btn" onclick="deleteReminder(${r.id})">삭제</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function showForm() {
+            document.getElementById('reminderForm').style.display = 'block';
+            document.getElementById('addBtn').style.display = 'none';
+            
+            document.getElementById('editId').value = ''; 
+            document.getElementById('saveBtnText').innerText = "저장하기";
+            document.getElementById('remindName').value = '';
+            
+            tpSelection = { ampm: 'AM', hour: '12', min: '00' };
+            updateTimeDisplay();
+
+            selectSnooze(0, document.querySelectorAll('.snooze-opt')[0]);
+            selectRepeat('none', document.querySelectorAll('.repeat-opt')[0]);
+            selectColor('#FFB3BA', document.querySelectorAll('.color-opt')[0]);
+        }
+
+        function cancelForm() {
+            document.getElementById('reminderForm').style.display = 'none';
+            if(selectedDate) {
+                document.getElementById('addBtn').style.display = 'inline-block';
+            }
+        }
+
+        function editReminder(id) {
+            const r = reminders.find(item => item.id === id);
+            if(!r) return;
+
+            showForm();
+            document.getElementById('editId').value = r.id; 
+            document.getElementById('saveBtnText').innerText = "수정하기";
+            document.getElementById('remindName').value = r.title;
+            
+            const [hh, mm] = r.time.split(':');
+            let h = parseInt(hh);
+            let ampm = 'AM';
+            if(h >= 12) { ampm = 'PM'; if(h>12) h-=12; }
+            if(h === 0) h = 12;
+            tpSelection = { ampm: ampm, hour: String(h), min: mm };
+            updateTimeDisplay(); 
+            
+            const snzBtns = document.querySelectorAll('.snooze-opt');
+            snzBtns.forEach(b => {
+                if(b.innerText.includes(r.snooze + '분') || (r.snooze===0 && b.innerText==='없음')) selectSnooze(r.snooze, b);
+            });
+            
+            const repBtns = document.querySelectorAll('.repeat-opt');
+            repBtns.forEach(b => {
+                if(r.repeat_type === 'none' && b.innerText.includes('없음')) selectRepeat('none', b);
+                if(r.repeat_type === 'daily' && b.innerText.includes('매일')) selectRepeat('daily', b);
+                if(r.repeat_type === 'weekly' && b.innerText.includes('매주')) selectRepeat('weekly', b);
+                if(r.repeat_type === 'weekly_once' && b.innerText.includes('이번 주만')) selectRepeat('weekly_once', b);
+            });
+            
+            if(r.repeat_days) {
+                selectedWeekDays = r.repeat_days.split(',').map(Number);
+                document.querySelectorAll('.day-check').forEach((el, idx) => {
+                    if(selectedWeekDays.includes(idx)) el.classList.add('active');
+                    else el.classList.remove('active');
+                });
+            }
+            
+            if(r.color) {
+                selectedColor = r.color;
+                const colBtns = document.querySelectorAll('.color-opt');
+                colBtns.forEach(b => {
+                    b.classList.remove('active');
+                    if(b.getAttribute('onclick').includes(r.color)) b.classList.add('active');
+                });
+            }
+
+            document.getElementById('reminderForm').scrollIntoView({behavior: 'smooth'});
+        }
+
+        function initTimePicker() {
+            const hC = document.getElementById('tpHour');
+            const mC = document.getElementById('tpMin');
+            hC.innerHTML = ''; mC.innerHTML = '';
+            for(let i=1; i<=12; i++) {
+                hC.innerHTML += `<div class="tp-item ${i===12?'selected':''}" onclick="setTp('hour', '${i}', this)">${i}</div>`;
+            }
+            // 5분 단위(i+=5)에서 1분 단위(i++)로 수정
+            for(let i=0; i<60; i++) {
+                const val = String(i).padStart(2,'0');
+                mC.innerHTML += `<div class="tp-item ${i===0?'selected':''}" onclick="setTp('min', '${val}', this)">${val}</div>`;
+            }
+        }
+        function openTimeModal() { document.getElementById('timeModal').style.display = 'flex'; }
+        function setTp(type, val, el) {
+            tpSelection[type] = val;
+            Array.from(el.parentElement.children).forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+        function confirmTime() {
+            updateTimeDisplay();
+            document.getElementById('timeModal').style.display = 'none';
+        }
+        function updateTimeDisplay() {
+            const str = `${tpSelection.ampm === 'AM' ? '오전' : '오후'} ${tpSelection.hour}:${tpSelection.min}`;
+            document.getElementById('remindTimeDisplay').innerText = str;
+            let h = parseInt(tpSelection.hour);
+            if(tpSelection.ampm === 'PM' && h !== 12) h += 12;
+            if(tpSelection.ampm === 'AM' && h === 12) h = 0;
+            document.getElementById('remindTimeValue').value = `${String(h).padStart(2,'0')}:${tpSelection.min}`;
+        }
+        function selectSnooze(min, btn) {
+            selectedSnooze = min;
+            document.querySelectorAll('.snooze-opt').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+        function selectRepeat(type, btn) {
+            selectedRepeat = type;
+            document.querySelectorAll('.repeat-opt').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const showWeek = (type === 'weekly' || type === 'weekly_once');
+            document.getElementById('weekSelector').style.display = showWeek ? 'flex' : 'none';
+            if(!showWeek) {
+                selectedWeekDays = [];
+                document.querySelectorAll('.day-check').forEach(d => d.classList.remove('active'));
+            }
+        }
+        function toggleDay(d, btn) {
+            if(selectedWeekDays.includes(d)) {
+                selectedWeekDays = selectedWeekDays.filter(x => x !== d);
+                btn.classList.remove('active');
+            } else {
+                selectedWeekDays.push(d);
+                btn.classList.add('active');
+            }
+        }
+        function selectColor(color, btn) {
+            selectedColor = color;
+            document.querySelectorAll('.color-opt').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        function loadReminders() {
+            fetch(`${API_URL}/get-reminders`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name: userName })
+            })
+            .then(res => res.json())
+            .then(data => {
+                reminders = data.reminders || [];
+                renderCalendar();
+                if(selectedDate) {
+                    const day = new Date(selectedDate).getDay();
+                    renderList(getRemindersForDate(selectedDate, day), `${selectedDate} 리마인더`);
+                } else {
+                    showScheduledList();
+                }
+            });
+        }
+
+        function saveReminder() {
+            const idVal = document.getElementById('editId').value;
+            // [중요] ID 값을 정수로 변환. 비어있으면 null
+            const id = (idVal && idVal !== "") ? parseInt(idVal) : null;
+            
+            const name = document.getElementById('remindName').value;
+            const time = document.getElementById('remindTimeValue').value;
+
+            if(!name) { showAlert("이름을 입력해주세요", false); return; }
+            if((selectedRepeat === 'weekly' || selectedRepeat === 'weekly_once') && selectedWeekDays.length === 0) {
+                showAlert("요일을 선택해주세요", false); return;
+            }
+
+            const payload = {
+                id: id, 
+                user: userName,
+                title: name,
+                time: time,
+                snooze: selectedSnooze,
+                repeat_type: selectedRepeat,
+                repeat_days: selectedWeekDays.join(','),
+                target_date: selectedDate,
+                color: selectedColor
+            };
+
+            fetch(`${API_URL}/save-reminder`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    showAlert("저장되었습니다", true);
+                    document.getElementById('reminderForm').style.display = 'none';
+                    loadReminders();
+                } else {
+                    // [중요] 실패 시 에러 메시지 출력
+                    showAlert("오류: " + data.message, false);
+                }
+            })
+            .catch(err => {
+                showAlert("통신 오류 발생", false);
+            });
+        }
+
+        function deleteReminder(id) {
+            fetch(`${API_URL}/delete-reminder`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id: id })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    showAlert("삭제되었습니다", true);
+                    loadReminders();
+                }
+            });
+        }
+
+        function showAlert(msg, isSuccess) {
+            const m = document.getElementById('alertModal');
+            const icon = document.getElementById('alertIcon');
+            document.getElementById('alertMsg').innerText = msg;
+            icon.style.display = isSuccess ? 'block' : 'none';
+            if(isSuccess) {
+                icon.style.animation = 'none';
+                icon.offsetHeight; 
+                icon.style.animation = 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            }
+            m.style.display = 'flex';
+        }
+        
+        window.closeAlert = function() { document.getElementById('alertModal').style.display = 'none'; }
+    </script>
+</body>
+</html>

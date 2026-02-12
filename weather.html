@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Weather Forecast</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+    
+    <style>
+        /* 1. 기본 설정 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", Roboto, "Noto Sans KR", sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            /* 초기 배경 (오후) */
+            background: linear-gradient(135deg, #6dd5fa 0%, #001f5b 100%);
+            min-height: 100vh;
+            color: white;
+            transition: background 1.5s ease;
+            overflow-x: hidden;
+        }
+
+        /* 시간대별 테마 */
+        body.morning { background: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%); color: #4a4a4a; }
+        body.afternoon { background: linear-gradient(135deg, #6dd5fa 0%, #001f5b 100%); color: white; }
+        body.evening { background: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%); color: white; }
+
+        /* 2. 로딩 스피너 */
+        #loading-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #f2f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .spinner-svg { width: 50px; height: 50px; animation: rotate 2s linear infinite; }
+        .spinner-circle {
+            stroke: #3b82f6; stroke-width: 4;
+            stroke-dasharray: 1, 200; stroke-dashoffset: 0;
+            stroke-linecap: round; fill: none;
+            animation: dash 1.5s ease-in-out infinite;
+        }
+
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+        @keyframes dash {
+            0% { stroke-dasharray: 1, 200; stroke-dashoffset: 0; }
+            50% { stroke-dasharray: 89, 200; stroke-dashoffset: -35px; }
+            100% { stroke-dasharray: 89, 200; stroke-dashoffset: -124px; }
+        }
+
+        /* 3. 메인 레이아웃 */
+        #main-content {
+            opacity: 0; padding: 24px; padding-bottom: 50px;
+            transition: opacity 0.8s ease-in; display: none;
+        }
+
+        .header {
+            display: flex; align-items: center; margin-bottom: 30px; padding-top: 10px;
+        }
+
+        .back-btn {
+            background: none; border: none; cursor: pointer;
+            padding: 8px; margin-left: -8px; color: inherit;
+            display: flex; align-items: center;
+        }
+        .back-btn span { font-size: 28px; }
+
+        .location-title { font-size: 18px; font-weight: 600; margin-left: 10px; }
+
+        /* 현재 날씨 */
+        .current-section {
+            display: flex; flex-direction: column; align-items: center;
+            margin-bottom: 40px; text-align: center;
+        }
+        .current-temp { font-size: 72px; font-weight: 200; letter-spacing: -2px; margin-bottom: -10px; }
+        .current-desc { font-size: 20px; font-weight: 500; opacity: 0.9; margin-bottom: 10px; }
+        .current-high-low { font-size: 14px; opacity: 0.8; }
+
+        /* 카드 공통 (Glassmorphism) */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px; padding: 20px; margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+        body.morning .glass-panel {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.8); color: #333;
+        }
+
+        .section-title {
+            font-size: 14px; font-weight: 600; opacity: 0.8;
+            margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        .title-left { display: flex; align-items: center; gap: 5px; }
+        .date-range { font-size: 12px; opacity: 0.7; font-weight: normal; }
+
+        /* 시간대별 예보 */
+        .hourly-container {
+            display: flex; overflow-x: auto; gap: 20px; padding-bottom: 10px;
+            scrollbar-width: none;
+        }
+        .hourly-container::-webkit-scrollbar { display: none; }
+        .hourly-item {
+            display: flex; flex-direction: column; align-items: center;
+            min-width: 50px; gap: 8px;
+        }
+        .hourly-time { font-size: 13px; opacity: 0.8; }
+        .hourly-icon { width: 30px; height: 30px; object-fit: contain; }
+        .hourly-temp { font-size: 16px; font-weight: 600; }
+
+        /* [수정됨] 주간 예보 (텍스트 추가됨) */
+        .daily-row {
+            display: flex; align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255, 0.1);
+        }
+        body.morning .daily-row { border-bottom: 1px solid rgba(0,0,0, 0.05); }
+        .daily-row:last-child { border-bottom: none; }
+
+        .daily-day { 
+            width: 50px; /* 요일 고정 너비 */
+            font-weight: 600; font-size: 15px; 
+        }
+        
+        /* 날씨 아이콘 + 텍스트 영역 */
+        .daily-condition { 
+            flex: 1; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding-left: 10px;
+        }
+        .daily-icon { width: 32px; height: 32px; }
+        .daily-text { 
+            font-size: 14px; 
+            opacity: 0.9;
+            white-space: nowrap; /* 줄바꿈 방지 */
+        }
+
+        .daily-temp { 
+            width: 80px; /* 온도 영역 고정 너비 */
+            text-align: right; font-size: 15px; opacity: 0.9; 
+        }
+        .min-temp { opacity: 0.6; margin-right: 8px; }
+
+        /* 뉴스 아이템 */
+        .news-item { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+        .news-item:last-child { margin-bottom: 0; }
+        .news-thumb {
+            width: 50px; height: 50px; border-radius: 12px;
+            background-color: rgba(0,0,0,0.1); display: flex;
+            align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;
+        }
+        .news-content { flex: 1; min-width: 0; }
+        .news-headline { font-size: 15px; font-weight: 600; margin-bottom: 4px; line-height: 1.3; }
+        .news-meta { font-size: 12px; opacity: 0.6; }
+
+        /* ========================================= */
+        /* [추가됨] 알람(Reminder) 관련 CSS 스타일 */
+        /* ========================================= */
+        #alarmOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%, #a18cd1 100%);
+            background-size: 400% 400%; animation: gradientBG 10s ease infinite;
+            z-index: 10000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 40px;
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .alarm-title { font-size: 32px; font-weight: 800; color: white; margin-bottom: 10px; text-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .alarm-msg { font-size: 18px; color: rgba(255,255,255,0.9); margin-bottom: 50px; }
+        .alarm-btn { width: 100%; max-width: 280px; padding: 18px; border-radius: 30px; border: none; font-size: 18px; font-weight: 700; margin-bottom: 16px; cursor: pointer; }
+        .stop-btn { background: white; color: #f04452; }
+        .snooze-btn { background: rgba(255,255,255,0.3); color: white; backdrop-filter: blur(5px); }
+
+        /* 알림 모달 (재알림 확인 등) */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10001; display: none; align-items: center; justify-content: center; }
+        .custom-modal { background: white; width: 85%; max-width: 320px; border-radius: 24px; padding: 24px; text-align: center; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; align-items: center; color: #333; }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .success-icon { width: 60px; height: 60px; object-fit: contain; margin-bottom: 16px; display: none; }
+        .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; color: #333; }
+        .modal-btn { width: 100%; padding: 14px; border-radius: 16px; border: none; background: #3182f6; color: white; font-size: 16px; font-weight: 600; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="alarmOverlay">
+        <div class="alarm-title" id="alarmTitleText">리마인더</div>
+        <div class="alarm-msg" id="alarmSubText">을/를 할 시간입니다.</div>
+        <button class="alarm-btn stop-btn" onclick="stopAlarm()">종료</button>
+        <button class="alarm-btn snooze-btn" onclick="snoozeAlarm()">연기 (재알림)</button>
+    </div>
+
+    <div id="alertModal" class="modal-overlay">
+        <div class="custom-modal">
+            <img src="icon/check.webp" class="success-icon" id="alertIcon" alt="Check">
+            <div class="modal-title" id="alertMsg">저장되었습니다</div>
+            <button class="modal-btn" onclick="closeAlert()">확인</button>
+        </div>
+    </div>
+
+    <div id="loading-screen">
+        <svg class="spinner-svg" viewBox="0 0 50 50">
+            <circle class="spinner-circle" cx="25" cy="25" r="20"></circle>
+        </svg>
+    </div>
+
+    <div id="main-content">
+        <div class="header">
+            <button class="back-btn" onclick="location.href='app.html'">
+                <span class="material-symbols-rounded">arrow_back_ios_new</span>
+            </button>
+            <div class="location-title" id="location-name">위치 확인 중...</div>
+        </div>
+
+        <div class="current-section">
+            <div class="current-temp" id="now-temp">--°</div>
+            <div class="current-desc" id="now-desc">불러오는 중</div>
+            <div class="current-high-low">
+                최고 <span id="today-high">--°</span>  최저 <span id="today-low">--°</span>
+            </div>
+        </div>
+
+        <div class="glass-panel">
+            <div class="section-title">
+                <div class="title-left">
+                    <span class="material-symbols-rounded" style="font-size:18px;">schedule</span>
+                    시간대별 예보
+                </div>
+            </div>
+            <div class="hourly-container" id="hourly-list"></div>
+        </div>
+
+        <div class="glass-panel">
+            <div class="section-title">
+                <div class="title-left">
+                    <span class="material-symbols-rounded" style="font-size:18px;">calendar_month</span>
+                    주간 예보
+                </div>
+                <div class="date-range" id="weekly-range-text"></div>
+            </div>
+            <div id="daily-list"></div>
+        </div>
+
+        <div class="glass-panel">
+            <div class="section-title">
+                <div class="title-left">
+                    <span class="material-symbols-rounded" style="font-size:18px;">newspaper</span>
+                    오늘의 생활 날씨
+                </div>
+            </div>
+            <div id="news-list"></div>
+        </div>
+    </div>
+
+    <script>
+        // =========================================
+        // [추가됨] 알람 관련 변수 및 설정
+        // =========================================
+        const API_URL = 'https://jaewondev.pythonanywhere.com';
+        const userName = localStorage.getItem('loginUser');
+        let reminders = [];
+        let activeAlarm = null;
+        let snoozedAlarms = [];
+
+        // 알람 소리 설정
+        const sound1 = new Audio('https://drive.google.com/uc?export=download&id=1gR40urBgaolXetwLWWP6wQfVG80cGHrW');
+        const sound2 = new Audio('https://drive.google.com/uc?export=download&id=1kIfvcsX7c6t_faDUYvW7wsYipnSOn8Ot');
+        sound2.loop = true;
+
+        window.onload = function() {
+            setTimeTheme();
+            getWeatherAndLocation();
+
+            // [추가됨] 리마인더 로드 및 알람 체크 시작
+            if (userName) {
+                loadReminders();
+                setInterval(checkAlarm, 1000);
+            }
+            
+            // [추가됨] 오디오 자동 재생 제한 해제용
+            document.body.addEventListener('touchstart', unlockAudio, { once: true });
+            document.body.addEventListener('click', unlockAudio, { once: true });
+        };
+
+        function setTimeTheme() {
+            const hour = new Date().getHours();
+            const body = document.body;
+            body.classList.remove('morning', 'afternoon', 'evening');
+            if (hour >= 6 && hour < 12) body.classList.add('morning');
+            else if (hour >= 12 && hour < 17) body.classList.add('afternoon');
+            else body.classList.add('evening');
+        }
+
+        function getWeatherAndLocation() {
+            if (!navigator.geolocation) {
+                fetchData(37.5665, 126.9780, "서울특별시");
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => fetchData(pos.coords.latitude, pos.coords.longitude),
+                () => fetchData(37.5665, 126.9780, "서울특별시")
+            );
+        }
+
+        async function fetchData(lat, lon, fallbackName = null) {
+            try {
+                // 주소 확인
+                let locName = fallbackName;
+                if (!locName) {
+                    try {
+                        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&accept-language=ko`);
+                        const geoData = await geoRes.json();
+                        if (geoData.address) {
+                            locName = geoData.address.borough || geoData.address.city || geoData.address.town || "현위치";
+                            if(locName === "서울특별시") locName = "서울";
+                        }
+                    } catch(e) { locName = "현위치"; }
+                }
+                document.getElementById('location-name').innerText = locName;
+
+                // 날씨 데이터 (Open-Meteo)
+                const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
+                const res = await fetch(weatherUrl);
+                const data = await res.json();
+
+                renderCurrentWeather(data);
+                renderHourlyForecast(data);
+                renderDailyForecast(data);
+                renderNews(data);
+
+                setTimeout(finishLoading, 800);
+
+            } catch (err) {
+                console.error(err);
+                alert("날씨 정보를 불러오는데 실패했습니다.");
+                finishLoading();
+            }
+        }
+
+        function finishLoading() {
+            const loader = document.getElementById('loading-screen');
+            const content = document.getElementById('main-content');
+            loader.style.opacity = '0';
+            setTimeout(() => {
+                loader.style.display = 'none';
+                content.style.display = 'block';
+                setTimeout(() => content.style.opacity = '1', 50);
+            }, 500);
+        }
+
+        function renderCurrentWeather(data) {
+            const current = data.current;
+            const daily = data.daily;
+            const info = getWeatherInfo(current.weather_code);
+
+            document.getElementById('now-temp').innerText = `${Math.round(current.temperature_2m)}°`;
+            document.getElementById('now-desc').innerText = info.label;
+            document.getElementById('today-high').innerText = `${Math.round(daily.temperature_2m_max[0])}°`;
+            document.getElementById('today-low').innerText = `${Math.round(daily.temperature_2m_min[0])}°`;
+        }
+
+        function renderHourlyForecast(data) {
+            const container = document.getElementById('hourly-list');
+            container.innerHTML = '';
+            const currentHour = new Date().getHours();
+
+            for (let i = currentHour; i < currentHour + 24; i++) {
+                if (!data.hourly.time[i]) break;
+                const temp = Math.round(data.hourly.temperature_2m[i]);
+                const code = data.hourly.weather_code[i];
+                const info = getWeatherInfo(code);
+                let hourVal = i % 24;
+                let displayTime = (i === currentHour) ? "지금" : `${hourVal}시`;
+                
+                container.innerHTML += `
+                    <div class="hourly-item">
+                        <span class="hourly-time">${displayTime}</span>
+                        <img src="${info.icon}" class="hourly-icon" alt="${info.label}">
+                        <span class="hourly-temp">${temp}°</span>
+                    </div>`;
+            }
+        }
+
+        function renderDailyForecast(data) {
+            const container = document.getElementById('daily-list');
+            container.innerHTML = '';
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+
+            // 1. 날짜 범위 표시 계산 (내일 ~ 6일 후)
+            if (data.daily.time.length > 6) {
+                const startStr = data.daily.time[1]; // 내일
+                const endStr = data.daily.time[6];   // 6일 후
+                
+                const sDate = new Date(startStr);
+                const eDate = new Date(endStr);
+                
+                // 예: 2.10 ~ 2.16
+                const rangeText = `${sDate.getMonth()+1}.${sDate.getDate()} ~ ${eDate.getMonth()+1}.${eDate.getDate()}`;
+                document.getElementById('weekly-range-text').innerText = `(${rangeText})`;
+            }
+
+            // 2. 리스트 렌더링 (내일부터 6일간)
+            for (let i = 1; i < 7; i++) {
+                if(!data.daily.time[i]) break;
+                
+                const dateObj = new Date(data.daily.time[i]);
+                const dayLabel = days[dateObj.getDay()];
+                const max = Math.round(data.daily.temperature_2m_max[i]);
+                const min = Math.round(data.daily.temperature_2m_min[i]);
+                const info = getWeatherInfo(data.daily.weather_code[i]);
+
+                container.innerHTML += `
+                    <div class="daily-row">
+                        <span class="daily-day">${dayLabel}요일</span>
+                        <div class="daily-condition">
+                            <img src="${info.icon}" class="daily-icon">
+                            <span class="daily-text">${info.label}</span>
+                        </div>
+                        <div class="daily-temp">
+                            <span class="min-temp">${min}°</span>
+                            <span>${max}°</span>
+                        </div>
+                    </div>`;
+            }
+        }
+
+        function renderNews(data) {
+            const container = document.getElementById('news-list');
+            container.innerHTML = '';
+            const code = data.current.weather_code;
+            let items = [];
+
+            if (code >= 51) {
+                items.push({e:"☔️", t:"비오는 날 빗길 안전 운전 주의", m:"안전 교통 뉴스"});
+                items.push({e:"🧥", t:"쌀쌀한 날씨, 겉옷 챙기세요", m:"건강 라이프"});
+            } else if (code <= 3) {
+                if (data.current.temperature_2m > 25) {
+                    items.push({e:"☀️", t:"자외선 지수 높음, 선크림 필수", m:"피부 건강"});
+                } else {
+                    items.push({e:"🏃", t:"산책하기 좋은 날씨, 공원 추천", m:"라이프스타일"});
+                }
+            }
+            items.push({e:"🥗", t:"환절기 면역력 높이는 음식 5가지", m:"건강 정보"});
+
+            items.forEach(item => {
+                container.innerHTML += `
+                    <div class="news-item">
+                        <div class="news-thumb">${item.e}</div>
+                        <div class="news-content">
+                            <div class="news-headline">${item.t}</div>
+                            <div class="news-meta">${item.m}</div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function getWeatherInfo(code) {
+            // WMO 코드 해석 및 텍스트 매핑
+            let label = "맑음";
+            let iconCode = "01d";
+            
+            if (code === 0) { label="맑음"; iconCode="01d"; }
+            else if (code === 1) { label="대체로 맑음"; iconCode="02d"; }
+            else if (code === 2) { label="구름 조금"; iconCode="03d"; }
+            else if (code === 3) { label="흐림"; iconCode="04d"; }
+            else if (code <= 48) { label="안개"; iconCode="50d"; }
+            else if (code <= 55) { label="이슬비"; iconCode="09d"; }
+            else if (code <= 67) { label="비"; iconCode="10d"; }
+            else if (code <= 77) { label="진눈깨비"; iconCode="13d"; }
+            else if (code <= 82) { label="소나기"; iconCode="09d"; }
+            else if (code <= 86) { label="눈"; iconCode="13d"; }
+            else if (code >= 95) { label="뇌우"; iconCode="11d"; }
+
+            return {
+                label: label,
+                icon: `https://openweathermap.org/img/wn/${iconCode}@2x.png`
+            };
+        }
+
+        // =========================================
+        // [추가됨] 알람 관련 함수들 (reminder.html에서 이식)
+        // =========================================
+
+        function unlockAudio() {
+            sound1.play().then(() => { sound1.pause(); sound1.currentTime = 0; }).catch(() => {});
+            sound2.play().then(() => { sound2.pause(); sound2.currentTime = 0; }).catch(() => {});
+        }
+
+        function loadReminders() {
+            fetch(`${API_URL}/get-reminders`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name: userName })
+            })
+            .then(res => res.json())
+            .then(data => {
+                reminders = data.reminders || [];
+            })
+            .catch(err => console.log('리마인더 로드 실패:', err));
+        }
+
+        function checkAlarm() {
+            const now = new Date();
+            if(now.getSeconds() !== 0) return;
+            const timeStr = now.toTimeString().substring(0, 5);
+            const dateStr = now.toISOString().split('T')[0];
+            const day = now.getDay();
+
+            reminders.forEach(r => {
+                let trigger = false;
+                if(r.time === timeStr) {
+                    if(r.repeat_type === 'daily') trigger = true;
+                    if(r.repeat_type === 'none' && r.target_date === dateStr) trigger = true;
+                    if(r.repeat_type === 'weekly' && r.repeat_days.split(',').map(Number).includes(day)) trigger = true;
+                    if(r.repeat_type === 'weekly_once' && isSameWeek(dateStr, r.target_date)) {
+                        if(r.repeat_days.split(',').map(Number).includes(day)) trigger = true;
+                    }
+                }
+                if(trigger) triggerAlarm(r);
+            });
+
+            snoozedAlarms.forEach((item, idx) => {
+                if(item.triggerTime === timeStr) {
+                    triggerAlarm(item.original);
+                    snoozedAlarms.splice(idx, 1);
+                }
+            });
+        }
+
+        function isSameWeek(date1Str, date2Str) {
+            const d1 = new Date(date1Str);
+            const d2 = new Date(date2Str);
+            const d1Sun = new Date(d1); d1Sun.setDate(d1.getDate() - d1.getDay());
+            const d2Sun = new Date(d2); d2Sun.setDate(d2.getDate() - d2.getDay());
+            return d1Sun.toDateString() === d2Sun.toDateString();
+        }
+
+        function triggerAlarm(r) {
+            activeAlarm = r;
+            document.getElementById('alarmTitleText').innerText = r.title;
+            document.getElementById('alarmSubText').innerText = `${r.title}을/를 할 시간입니다.`;
+            document.getElementById('alarmOverlay').style.display = 'flex';
+            
+            sound1.currentTime = 0;
+            sound2.currentTime = 0;
+            sound1.play().then(() => {
+                sound1.onended = () => {
+                    sound2.play();
+                };
+            }).catch(e => console.log("Audio Error:", e));
+        }
+
+        function stopAlarm() { 
+            closeOverlay(); 
+        }
+        
+        function snoozeAlarm() {
+            closeOverlay();
+            if(activeAlarm && activeAlarm.snooze > 0) {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() + activeAlarm.snooze);
+                snoozedAlarms.push({ triggerTime: now.toTimeString().substring(0,5), original: activeAlarm });
+                showAlert(`${activeAlarm.snooze}분 뒤 다시 알립니다`, true);
+            }
+        }
+        
+        function closeOverlay() {
+            document.getElementById('alarmOverlay').style.display = 'none';
+            sound1.pause();
+            sound2.pause();
+            sound1.currentTime = 0;
+            sound2.currentTime = 0;
+            sound1.onended = null;
+        }
+
+        function showAlert(msg, isSuccess) {
+            const m = document.getElementById('alertModal');
+            const icon = document.getElementById('alertIcon');
+            document.getElementById('alertMsg').innerText = msg;
+            icon.style.display = isSuccess ? 'block' : 'none';
+            if(isSuccess) {
+                icon.style.animation = 'none';
+                icon.offsetHeight; 
+                icon.style.animation = 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            }
+            m.style.display = 'flex';
+        }
+        
+        function closeAlert() { document.getElementById('alertModal').style.display = 'none'; }
+    </script>
+</body>
+</html>
